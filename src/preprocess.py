@@ -57,7 +57,7 @@ def read_device_files(device_name, data_dir="../Data/raw"):
 if __name__ == "__main__":
 
     device = "8#Belt Conveyer"
-    features_df, rating_df = read_device_files(device, data_dir="Data/raw")
+    features_df, rating_df = read_device_files(device, data_dir="../Data/raw")
 
     features_df["datetime"] = pd.to_datetime(
         features_df["Date"].astype(str).str.strip() + " " +
@@ -117,7 +117,7 @@ if __name__ == "__main__":
     print("Null counts per column:")
     print(null_counts)
 
-    output_path = os.path.join("Data", "raw", f"{device}_merged.csv")
+    output_path = os.path.join("../Data", "raw", f"{device}_merged.csv")
     merged_df.to_csv(output_path, index=False)
 
 
