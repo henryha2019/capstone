@@ -124,13 +124,20 @@ The monitoring system collects two main types of data:
 
 ### Selected Output Device Ratings
 
-| Device Rating         | Description                        | Rating (0–100)                                 |
-|--------------------|------------------------------------|------------------------------------------------|
-| alignment_status   | Alignment of conveyor components   | 0: Misaligned; 100: Perfectly aligned          |
-| bearing_lubrication| Lubrication level in bearings      | 0: Dry; 100: Fully lubricated                  |
-| rotor_balance_status| Balance of the rotor              | 0: Imbalanced; 100: Perfect balance            |
-| velocity_rms       | Overall vibration severity         | 0: High vibrations; 100: Minimal               |
-| rubbing_condition  | Friction between components        | 0: Severe rubbing; 100: No rubbing             |
+| Device Rating            | Description                                 | Rating (0–100)                                 |
+|--------------------------|---------------------------------------------|------------------------------------------------|
+| alignment_status         | Alignment of conveyor components            | 0: Misaligned; 100: Perfectly aligned          |
+| bearing_lubrication      | Lubrication level in bearings               | 0: Dry; 100: Fully lubricated                  |
+| crest_factor             | Ratio of peak amplitude to RMS value        | 0: Low peaks; 100: Severe peaks               |
+| electromagnetic_status   | Condition of motor's electromagnetic field  | 0: Faulty field; 100: Stable field             |
+| fit_condition            | Accuracy of component fit                   | 0: Poor fit; 100: Perfect fit                  |
+| kurtosis_opt             | Kurtosis of optimized vibration signal      | 0: Low kurtosis; 100: High kurtosis            |
+| rms_10_25khz             | Root mean square amplitude (10–25 kHz)      | 0: High amplitude; 100: Low amplitude          |
+| rms_1_10khz              | Root mean square amplitude (1–10 kHz)       | 0: High amplitude; 100: Low amplitude          |
+| rotor_balance_status     | Balance of the rotor                        | 0: Imbalanced; 100: Perfect balance            |
+| rubbing_condition        | Friction between components                 | 0: Severe rubbing; 100: No rubbing             |
+| velocity_rms             | Overall vibration severity                  | 0: High vibrations; 100: Minimal               |
+| peak_value_opt           | Optimized vibration peak value              | 0: Low peak; 100: Severe peak                  |
 
 ## Implementation Strategy
 
@@ -139,14 +146,51 @@ The monitoring system collects two main types of data:
 
 ### EDA and Data Processing
 
-**Exploratory Data Analysis (EDA):**
+**Exploratory Data Analysis (EDA)**
 
-- We perform EDA to extract meaningful insights from both the input sensor features and the output device ratings.
-  - For input features, we analyze distributions, trends, and correlations among the four sensor parameters (vibration, acceleration, temperature) to understand equipment behavior and identify anomalies or patterns.
-  - For output device ratings, we examine the range, frequency, and temporal changes of the 15 device health metrics, looking for trends, outliers, and relationships with sensor data.
-- Visualization techniques and summary statistics are used to reveal key relationships and guide feature engineering.
+EDA was conducted to extract meaningful insights from the **input features** (sensor parameters: vibration, acceleration, and temperature) and **output target metrics** (15 device health metrics). The goal is to understand equipment behavior, identify anomalies or patterns, and analyze relationships between input features and output metrics to guide feature engineering.
 
-**Data Processing:**
+---
+
+#### **Input Features**
+1. **Feature Distributions:**
+   - Visualizing the distributions of the input features helps assess their spread, skewness, and potential outliers.
+   - This is essential for detecting feature scaling/normalization needs or discovering trends related to time dependencies.
+
+   ![](images/input_feat_distributions.png)
+   *Caption: Distribution of input features such as `High-Frequency Acceleration`, `Low-Frequency Acceleration Z`, `Temperature`, and `Vibration Velocity Z`.*
+
+2. **Boxplots for Sensor Parameters:**
+   - Boxplots show the range, quartiles, and potential outliers of input features.
+   - This helps analyze anomalies or extreme measurements in parameters such as acceleration and vibration.
+
+   ![](images/input_feat_boxplots.png)
+   *Caption: Boxplots for input features reveal the variability and presence of outliers.*
+
+3. **Feature Correlation Matrix:**
+   - Assessing feature correlations helps identify strongly related parameters.
+   - For example, higher vibration and acceleration might indicate worn-out components, making these features potential predictors of target ratings.
+
+   ![](images/input_feat_corr_mat.png)
+   *Caption: Correlation matrix of input features demonstrates the relationships between variables, important for feature engineering.*
+
+---
+
+#### **Target Features**
+1. **Target Rating Distributions:**
+   - Understanding the distributions of target ratings aids in identifying their variability and range.
+   - Concentration in specific ranges might indicate clear thresholds for equipment health.
+
+   ![](images/target_feat_distributions.png)
+   *Caption: Distribution of target features such as `alignment_status`, `bearing_lubrication`, and other health metrics.*
+
+2. **Boxplots for Target Ratings:**
+   - Boxplots for target features provide insights into their variability and detect potential inconsistencies (e.g., extreme high or low ratings could be indicative of data-quality or operational issues).
+
+   ![](images/target_feat_boxplots.png)
+   *Caption: Boxplots for target features reveal rating variability and identify notable outliers in device health metrics.*
+
+**Data Preprocessing:**
 
 - To enable model prediction, we must align the high-frequency input data (collected every 5 seconds) with the lower-frequency output ratings (generated every 20 minutes).
 - This involves aggregating or summarizing the input sensor data within each 20-minute window (e.g., using statistical features such as mean, standard deviation, min, max, and frequency-domain features).
