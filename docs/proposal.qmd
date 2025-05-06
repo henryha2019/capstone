@@ -1,0 +1,246 @@
+---
+title: "Intelligent Monitoring and Maintenance Prediction System for Industrial Equipment"
+author: "Samuel Adetsi, Mu Ha, Cheng Zhang, Michael Hewlett"
+format:
+  pdf:
+    toc: true
+    toc-depth: 2
+    number-sections: true
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+# Load required libraries
+library(tidyverse)
+library(knitr)
+library(kableExtra)
+```
+
+# Executive Summary
+
+Brilliant Automation, a leader in industrial automation solutions in Shanghai, China, has engaged our team to develop an intelligent monitoring and predictive maintenance system for industrial equipments. This project will leverage advanced data analytics and machine learning to transform sensor data into actionable insights, supporting early fault detection and optimized maintenance for key machinery.
+
+# Introduction
+
+Brilliant Automation specializes in advanced monitoring and control systems for manufacturing and processing plants. To maximize equipment reliability and operational efficiency, the company installs high-frequency vibration and temperature sensors at critical points on key machinery, such as motors, gearboxes and bearing housings, across their clients' facilities. These sensors continuously collect data to monitor the health of essential assets including Tube Mills, Belt Conveyors, and High-Temperature Fans.
+
+![](images/proposal_machinery_sensor.png)
+*Example of sensor placement on industrial machinery*
+
+This project aims to enhance their predictive maintenance capabilities. By leveraging advanced data processing and machine learning, our system will enable early detection of equipment issues, reduce unplanned downtime, and optimize maintenance schedules. The focus of our analysis will be on three key pieces of industrial machinery: a Tube Mill, Belt Conveyor, and High-Temperature Fan. Our solution will integrate sensor exploratory data analysis, machine learning predictions, and an intuitive visualization platform to help maintenance teams make informed decisions about equipment upkeep and repair scheduling.
+
+## Context and Need
+
+Manufacturing facilities face constant challenges in maintaining equipment reliability while minimizing maintenance costs. Current maintenance practices, which often rely on fixed schedules or reactive approaches, can lead to either unnecessary maintenance or unexpected breakdowns. Modern sensor technology and data analytics offer an opportunity to revolutionize this approach through data-driven decision making.
+
+## Core Challenges
+
+Our project addresses several key challenges in industrial maintenance:
+
+1. Converting complex sensor readings into meaningful maintenance indicators
+2. Building transparent and reliable prediction models for equipment health evaluation
+3. Creating an accessible interface for maintenance personnel
+
+## Key Goals
+
+We aim to achieve the following:
+
+1. Data Analysis and Understanding:
+   - Map relationships across different sensor data
+   - Identify patterns in equipment behavior
+   - Analyze vibration signatures and their implications
+
+2. Predictive Modeling:
+   - Develop transparent prediction systems
+   - Enable early fault detection
+   - Provide clear reasoning for predictions
+
+3. User Interface Development:
+   - Enable live monitoring
+   - Present clear status indicators
+   - Facilitate historical analysis
+
+## Project Outputs
+
+Our team will deliver the following key outputs:
+
+- **Machine Learning Model for Device Ratings:**  
+  A robust machine learning model will be developed to analyze sensor and operational data, enabling the prediction and generation of health ratings for each monitored device. The model will be trained and validated using historical and real-time data, with performance metrics and retraining guidelines provided.
+
+- **Interactive Dashboard for Visualization:**  
+  An intuitive dashboard will be created to display device health ratings and related analytics. The dashboard will support real-time monitoring, historical trend analysis, and customizable alerts, providing maintenance teams with actionable insights and a user-friendly interface for decision-making.
+
+- **Comprehensive Final Report:**  
+  A detailed final report will be prepared for the client, documenting the project methodology, data analysis, model development process, results, and recommendations. The report will include visualizations, key findings, and guidance for future system enhancements or scaling.
+
+# Technical Approach
+
+## Data Overview
+
+```{r}
+#| label: data-summary-table
+#| tbl-cap: "Measurement System Overview"
+
+data_summary <- data.frame(
+  Equipment = c("Tube Mill", "Belt Conveyor #8", "High-Temperature Fan #1"),
+  Sensor_Points = c("6 locations", "4 locations", "5 locations"),
+  Sensor_Data = c("5-second intervals", "5-second intervals", "5-second intervals"),
+  Device_Ratings = c("20-minute intervals", "20-minute intervals", "20-minute intervals")
+)
+
+kable(data_summary) %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+```
+
+The monitoring system collects two main types of data:
+
+- **Sensor Data (Input):**
+  - Four key parameters are measured by the sensors at each location:
+    1. Vibration Velocity Z
+    2. Low-Frequency Acceleration
+    3. Temperature
+    4. High-Frequency Acceleration
+  - These sensor readings are collected at 5-second intervals, providing high-resolution time series data for each piece of equipment.
+
+- **Device Ratings (Output):**
+  - The system generates 15 device health and status ratings, which serve as output parameters for each equipment unit. These include metrics such as RMS of Vibration Velocity, Crest Factor, Optimized Kurtosis, Rotor Balance Status, and others.
+  - Device ratings are produced every 20 minutes, summarizing the equipment's condition and performance based on the sensor data.
+  - These ratings are generated by a proprietary Matlab program running on the machines. The calculation process is a black box: even Brilliant Automation does not have access to the internal logic or algorithms used to derive these ratings.
+
+### Input Sensor Data
+
+| Sensor Data               | What It Does                        | Why It's Important           |
+|----------------------------|-------------------------------------|------------------------------|
+| Low Frequency Acceleration | Tracks slow vibrations               | Detects alignment issues     |
+| High Frequency Acceleration| Tracks fast vibrations               | Detect friction issues       |
+| Vibration Velocity Z (z-axis) | Tracks vibration strength vertically | Detect system damage         |
+| Temperature                | Monitors component heat levels       | Helps prevent overheating    |
+
+### Selected Output Device Ratings
+
+| Device Rating            | Description                                 | Rating (0–100)                                 |
+|--------------------------|---------------------------------------------|------------------------------------------------|
+| alignment_status         | Alignment of conveyor components            | 0: Misaligned; 100: Perfectly aligned          |
+| bearing_lubrication      | Lubrication level in bearings               | 0: Dry; 100: Fully lubricated                  |
+| crest_factor             | Ratio of peak amplitude to RMS value        | 0: Low peaks; 100: Severe peaks               |
+| electromagnetic_status   | Condition of motor's electromagnetic field  | 0: Faulty field; 100: Stable field             |
+| fit_condition            | Accuracy of component fit                   | 0: Poor fit; 100: Perfect fit                  |
+| kurtosis_opt             | Kurtosis of optimized vibration signal      | 0: Low kurtosis; 100: High kurtosis            |
+| rms_10_25khz             | Root mean square amplitude (10–25 kHz)      | 0: High amplitude; 100: Low amplitude          |
+| rms_1_10khz              | Root mean square amplitude (1–10 kHz)       | 0: High amplitude; 100: Low amplitude          |
+| rotor_balance_status     | Balance of the rotor                        | 0: Imbalanced; 100: Perfect balance            |
+| rubbing_condition        | Friction between components                 | 0: Severe rubbing; 100: No rubbing             |
+| velocity_rms             | Overall vibration severity                  | 0: High vibrations; 100: Minimal               |
+| peak_value_opt           | Optimized vibration peak value              | 0: Low peak; 100: Severe peak                  |
+
+## Implementation Strategy
+
+![](images/proposal_data_pipeline.png)
+*Overview of the end-to-end data pipeline*
+
+### EDA and Data Processing
+
+**Exploratory Data Analysis (EDA)**
+
+EDA was conducted to extract meaningful insights from the **input features** (sensor parameters: vibration, acceleration, and temperature) and **output target metrics** (15 device health metrics). The goal is to understand equipment behavior, identify anomalies or patterns, and analyze relationships between input features and output metrics to guide feature engineering.
+
+---
+
+#### **Input Features**
+1. **Feature Distributions:**
+   - Visualizing the distributions of the input features helps assess their spread, skewness, and potential outliers.
+   - This is essential for detecting feature scaling/normalization needs or discovering trends related to time dependencies.
+
+   ![](images/input_feat_distributions.png)
+   *Caption: Distribution of input features such as `High-Frequency Acceleration`, `Low-Frequency Acceleration Z`, `Temperature`, and `Vibration Velocity Z`.*
+
+2. **Boxplots for Sensor Parameters:**
+   - Boxplots show the range, quartiles, and potential outliers of input features.
+   - This helps analyze anomalies or extreme measurements in parameters such as acceleration and vibration.
+
+   ![](images/input_feat_boxplots.png)
+   *Caption: Boxplots for input features reveal the variability and presence of outliers.*
+
+3. **Feature Correlation Matrix:**
+   - Assessing feature correlations helps identify strongly related parameters.
+   - For example, higher vibration and acceleration might indicate worn-out components, making these features potential predictors of target ratings.
+
+   ![](images/input_feat_corr_mat.png)
+   *Caption: Correlation matrix of input features demonstrates the relationships between variables, important for feature engineering.*
+
+---
+
+#### **Target Features**
+1. **Target Rating Distributions:**
+   - Understanding the distributions of target ratings aids in identifying their variability and range.
+   - Concentration in specific ranges might indicate clear thresholds for equipment health.
+
+   ![](images/target_feat_distributions.png)
+   *Caption: Distribution of target features such as `alignment_status`, `bearing_lubrication`, and other health metrics.*
+
+2. **Boxplots for Target Ratings:**
+   - Boxplots for target features provide insights into their variability and detect potential inconsistencies (e.g., extreme high or low ratings could be indicative of data-quality or operational issues).
+
+   ![](images/target_feat_boxplots.png)
+   *Caption: Boxplots for target features reveal rating variability and identify notable outliers in device health metrics.*
+
+**Data Preprocessing:**
+
+- To enable model prediction, we must align the high-frequency input data (collected every 5 seconds) with the lower-frequency output ratings (generated every 20 minutes).
+- This involves aggregating or summarizing the input sensor data within each 20-minute window (e.g., using statistical features such as mean, standard deviation, min, max, and frequency-domain features).
+- The processed input features are then paired with the corresponding device ratings, creating a dataset suitable for supervised learning.
+- Additional steps such as handling missing data, normalization, and feature selection are applied to ensure data quality and model readiness.
+
+### Model Development
+
+The model aims to predict device ratings (on a 0–100 scale) for each equipment unit, using sensor data as input. Our modeling strategy progresses from simple to complex.
+
+| Model              | Complexity   | Interpretability | Flexibility                | Overfit Risk | Compute Cost     |
+|----------------------|-------------|------------------|----------------------------|--------------|-----------------|
+| Baseline             | Very Low    | Perfectly clear  | None                       | None         | Minimal         |
+| Ridge                | Low         | High             | Only linear fits           | Low–Medium   | Fast            |
+| PolyRidge (deg 2)    | Medium      | Medium           | Simple non-linearities     | Medium       | Moderate        |
+| PolyRidge (deg 5)    | High        | Low              | Highly flexible curves     | High         | Heavy           |
+| Random Forest        | Medium–High | Low–Medium       | Arbitrary non-linear       | Medium       | Moderate–High   |
+| Neural Network       | High        | Low              | Very high                  | High         | Heavy           |
+
+### Interactive Dashboard
+
+The interactive dashboard serves as the primary interface for maintenance teams and stakeholders to monitor equipment health and gain actionable insights from the predictive models. It is designed to be intuitive, informative, and responsive to the needs of industrial operations.
+
+**Real-Time Monitoring:**
+Visualizes the latest device health ratings and sensor readings, updating as new data becomes available.
+
+**Historical Trends:**
+Allows users to explore historical data, view trends in equipment performance, and identify patterns or anomalies over time.
+
+**Customizable Alerts:**
+Enables users to set thresholds for key metrics and receive notifications when equipment health ratings fall below acceptable levels.
+
+**Drill-Down Analytics:**
+Provides the ability to investigate specific devices, time periods, or sensor parameters for root cause analysis.
+
+**User-Friendly Interface:**
+Designed for ease of use, with clear visualizations, tooltips, and navigation to support both technical and non-technical users.
+
+**Integration with Reporting:**
+Facilitates the export of data and visualizations for inclusion in reports or presentations to stakeholders.
+
+# Project Timeline
+
+| Week | Stage                          | Outputs                                                      |
+|------|--------------------------------|--------------------------------------------------------------|
+| 1    | Project launch, data processing| Wrangled dataset, toy dataset, MDS Proposal presentation      |
+| 2    | Data product MVPs              | MVP dashboard, MVP models, MDS Proposal report               |
+| 3    | Full data test                 | Cloud computing pipeline, initial results                    |
+| 4    | Model revision                 | Engineered features                                          |
+| 5    | Model revision                 | Engineered features                                          |
+| 6    | Output refinement              | Final dashboard, final models, MDS draft data product        |
+| 7    | Output refinement              | Final dashboard, final models, MDS presentation              |
+| 8    | Final checks                   | Final report, MDS final data product                         |
