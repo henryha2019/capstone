@@ -367,7 +367,6 @@ complex.
 ```{r}
 #| label: model-comparison
 #| tbl-cap: "Model Comparison Overview"
-#| results: asis
 
 model_comparison <- data.frame(
   Model = c("Baseline", "Ridge", "PolyRidge (deg 2)", "PolyRidge (deg 5)", 
@@ -380,13 +379,12 @@ model_comparison <- data.frame(
   Compute_Cost = c("Minimal", "Fast", "Moderate", "Heavy", "Moderate–High", "Heavy")
 )
 
-kable(model_comparison, format = "latex", booktabs = TRUE, longtable = FALSE) %>%
+kable(model_comparison, format = "latex", booktabs = TRUE, longtable = TRUE) %>%
   kable_styling(
     latex_options = c("scale_down", "hold_position"),
     font_size = 9
   )
 ```
-
 
 ## Interactive Dashboard
 
