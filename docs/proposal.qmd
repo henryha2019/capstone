@@ -277,70 +277,55 @@ model (LLM). The LLM analyzes the results and generates insights. These
 insights are used to create summary reports for stakeholders, making the
 results easier to understand and act on.
 
-![](images/proposal_data_pipeline.png) *Overview of the end-to-end data
-pipeline*
+![Overview of the end-to-end data
+pipeline](images/proposal_data_pipeline.png)
 
 ## EDA and Data Processing
+
+We began our exploratory data analysis (EDA) by focusing solely on the conveyor belt data. This allowed us to isolate and identify any issues or concerns specific to this component without the added complexity of analyzing all machines at once. By narrowing the scope, we could more clearly observe patterns, inconsistencies, and outliers in the sensor readings and device ratings.
 
 ### Input Features EDA
 
 1.  **Feature Distributions:**
 
-    -   Visualizing the distributions of the input features helps assess
-        their spread, skewness, and potential outliers.
-    -   This is essential for detecting feature scaling/normalization
-        needs or discovering trends related to time dependencies.
+    The histograms show how each feature varies across the three sensor locations: Gear Reducer, Gearbox First Shaft Input End, and Motor Drive End. Features like High-Frequency Acceleration and Low-Frequency Acceleration Z follow approximately normal distributions, but their centers shift depending on location. Temperature varies widely at the Motor Drive End and shows a bimodal pattern, suggesting two different operating states. Vibration Velocity Z is much higher at the Motor Drive End, possibly indicating wear or imbalance.
 
-    ![](images/input_feat_distributions.png) *Caption: Distribution of
-    input features such as `High-Frequency Acceleration`,
-    `Low-Frequency Acceleration Z`, `Temperature`, and
-    `Vibration Velocity Z`.*
+    To reduce the visual impact of extreme values, we removed the maximum value for each feature before re-plotting the distributions. This helped clarify the overall patterns by minimizing the distortion caused by rare but extreme outliers. The resulting plots better reflect the general distribution across sensor locations.
+
+![Feature Distributions by Location](images/feature_distributions.png){width=70%}
+
+![Feature Distributions by Location (Max Value Removed)](images/feature_distributions_rm_max.png){width=70%}
 
 2.  **Boxplots for Sensor Parameters:**
 
-    -   Boxplots show the range, quartiles, and potential outliers of
-        input features.
-    -   This helps analyze anomalies or extreme measurements in
-        parameters such as acceleration and vibration.
+    The boxplots reveal the spread and outliers of each feature for different sensor locations. For High-Frequency and Low-Frequency Acceleration, the Motor Drive End tends to show more outliers and wider spread. Temperature is generally higher and more stable in the Gear Reducer and Gearbox locations, while the Motor Drive End has lower and more variable temperatures. Vibration Velocity Z is noticeably higher at the Motor Drive End, reinforcing the histogram’s insights.
+    
+    Similar to the histograms, we removed the maximum value from each feature before generating the boxplots. This adjustment reduced the influence of extreme outliers, allowing the interquartile range and general spread to be more clearly observed.
 
-    ![](images/input_feat_boxplots.png) *Caption: Boxplots for input
-    features reveal the variability and presence of outliers.*
+![Feature Boxplots by Location](images/feature_box_plot.png){fig-cap="Feature Boxplots by Location" width=70%}
+
+![Feature Boxplots by Location (Max Value Removed)](images/feature_box_plot_rm_max.png){width=70%}
 
 3.  **Feature Correlation Matrix:**
 
-    -   Assessing feature correlations helps identify strongly related
-        parameters.
-    -   For example, higher vibration and acceleration might indicate
-        worn-out components, making these features potential predictors
-        of target ratings.
+    The heatmap shows strong positive correlation between High-Frequency and Low-Frequency Acceleration (r ≈ 0.97), suggesting they measure similar physical behavior. Temperature is negatively correlated with Vibration Velocity Z (r ≈ −0.71), which might point to a trade-off between thermal and mechanical stress. The rest of the features show weak or no meaningful correlation, indicating they capture different aspects of the machine's operation.
 
-    ![](images/input_feat_corr_mat.png) *Caption: Correlation matrix of
-    input features demonstrates the relationships between variables,
-    important for feature engineering.*
+![Feature Correlation Heatmap](images/feature_correlation_heatmap.png){fig-cap="Feature Correlation Heatmap" width=70%}
 
 ### Target Features EDA
 
 1.  **Target Rating Distributions:**
 
-    -   Understanding the distributions of target ratings aids in
-        identifying their variability and range.
-    -   Concentration in specific ranges might indicate clear thresholds
-        for equipment health.
+    The histograms of the target ratings show how each variable is distributed across the dataset. Most targets are skewed toward higher values, suggesting that the equipment is generally operating in good condition. A few targets, such as rubbing condition and rotor balance status, show broader distributions, indicating more variability or potential degradation in those areas. Some ratings also show clustering near specific values, which could reflect consistent patterns in operating conditions or thresholds used in the rating system.
 
-    ![](images/target_feat_distributions.png) *Caption: Distribution of
-    target features such as `alignment_status`, `bearing_lubrication`,
-    and other health metrics.*
+![Target Distributions (Histogram)](images/target_distributions.png){fig-cap="Target Distributions (Histogram)" width=70%}
+
 
 2.  **Boxplots for Target Ratings:**
 
-    -   Boxplots for target features provide insights into their
-        variability and detect potential inconsistencies (e.g., extreme
-        high or low ratings could be indicative of data-quality or
-        operational issues).
+    The boxplots provide a more visual summary of each target’s range, spread, and presence of outliers. Most targets have a compressed interquartile range near the top of the scale, reinforcing the idea that the machines are typically rated well. However, some targets exhibit longer whiskers and outliers, especially for those measuring physical stress or balance conditions. These variations can highlight which conditions are more prone to fluctuations and may require closer monitoring or more robust prediction models.
 
-    ![](images/target_feat_boxplots.png) *Caption: Boxplots for target
-    features reveal rating variability and identify notable outliers in
-    device health metrics.*
+![Target Distributions (Boxplot)](images/target_boxplots.png){fig-cap="Target Distributions (Boxplot)" width=70%}
 
 ### Data Preprocessing:
 
