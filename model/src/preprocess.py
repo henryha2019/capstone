@@ -57,7 +57,7 @@ def read_device_files(device_name, data_dir="../Data/raw"):
 if __name__ == "__main__":
 
     device = "8#Belt Conveyer"
-    features_df, rating_df = read_device_files(device, data_dir="../Data/raw")
+    features_df, rating_df = read_device_files(device, data_dir="Data/raw")
 
     features_df["datetime"] = pd.to_datetime(
         features_df["Date"].astype(str).str.strip() + " " +
@@ -76,11 +76,11 @@ if __name__ == "__main__":
     features_df.drop(columns=["Date", "Time", "id"], inplace=True)
     rating_df.drop(columns=["Date", "Time"], inplace=True)
 
-    print("\n✅ Combined Feature Data:")
+    print("\n Combined Feature Data:")
     print(features_df.head())
     print(features_df.shape)
 
-    print("\n✅ Rating Data:")
+    print("\n Rating Data:")
     print(rating_df.head())
     
     pivot_features_df = features_df.pivot_table(
@@ -97,10 +97,10 @@ if __name__ == "__main__":
 
     pivot_features_df['Temperature'] = pivot_features_df.groupby('location')['Temperature'].ffill()
 
-    print("\n✅ Pivoted Feature Data:")
+    print("\n Pivoted Feature Data:")
     print(pivot_features_df.head())
 
-    print("\n✅ Pivoted Rating Data:")
+    print("\n Pivoted Rating Data:")
     print(pivot_rating_df.head())
 
     pivot_features_df = pivot_features_df.sort_values("datetime")
@@ -117,7 +117,7 @@ if __name__ == "__main__":
     print("Null counts per column:")
     print(null_counts)
 
-    output_path = os.path.join("../Data", "raw", f"{device}_merged.csv")
+    output_path = os.path.join("Data", "process", f"{device}_merged.csv")
     merged_df.to_csv(output_path, index=False)
 
 
