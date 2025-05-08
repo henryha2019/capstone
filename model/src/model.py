@@ -31,6 +31,8 @@ def main():
     # Load and clean data
     df = pd.read_csv('Data/process/8#Belt Conveyer_merged.csv')
     df = df.drop(columns=['Device'], errors='ignore').dropna()
+    # Using a sample dataset comment line below for full data
+    df = df[:100000]
 
     # Preprocessing: datetime → timestamp, location → one-hot
     df['datetime'] = pd.to_datetime(df['datetime'])
