@@ -1,8 +1,13 @@
+# macOS system files
 .DS_Store
 
-/data/
+# Python cache
+**/__pycache__/
 
-**/__pycache__/docs/.RData
-docs/.Rhistory
+# R history and workspace files
 .Rhistory
+docs/.Rhistory
 docs/.RData
+
+# Project data folder
+/Data/process/
