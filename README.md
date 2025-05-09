@@ -6,7 +6,7 @@ Clone this repository:
 
 ```
 git clone https://github.com/Brilliant-Automation/capstone.git
-cd brilliant_automation
+cd capstone
 ```
 
 ### Create the Environment
