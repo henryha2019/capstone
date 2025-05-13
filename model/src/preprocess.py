@@ -2,6 +2,7 @@ import pandas as pd
 import os
 import glob
 import re
+import argparse
 
 def read_device_files(device_name, data_dir="../Data/raw"):
     """
@@ -55,9 +56,21 @@ def read_device_files(device_name, data_dir="../Data/raw"):
     return features_df, rating_df
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Preprocess sensor and ratings data for a device."
+    )
+    parser.add_argument("--device", required=True, help="Device name, e.g. '8#Belt Conveyer'")
+    parser.add_argument("--data_dir", default="Data/raw", help="Directory containing raw .xlsx data files (default: Data/raw)")
+    parser.add_argument("--output_dir", default="Data/process", help="Directory to save processed data (default: Data/process)")
 
-    device = "8#Belt Conveyer"
-    features_df, rating_df = read_device_files(device, data_dir="Data/raw")
+    args = parser.parse_args()
+    device = args.device
+    data_dir = args.data_dir
+    output_dir = args.output_dir
+
+    os.makedirs(output_dir, exist_ok=True)
+
+    features_df, rating_df = read_device_files(device, data_dir=data_dir)
 
     features_df["datetime"] = pd.to_datetime(
         features_df["Date"].astype(str).str.strip() + " " +
@@ -117,7 +130,7 @@ if __name__ == "__main__":
     print("Null counts per column:")
     print(null_counts)
 
-    output_path = os.path.join("Data", "process", f"{device}_merged.csv")
+    output_path = os.path.join(output_dir, f"{device}_merged.csv")
     merged_df.to_csv(output_path, index=False)
 
 
