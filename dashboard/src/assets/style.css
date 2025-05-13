@@ -47,14 +47,14 @@ html, body, .dash-container {
     height: clamp(15rem, 40%, 22rem);
   }
 
-  .detail-charts-col {
+  .signal-charts-col {
     display: flex;
     flex-direction: column;
     height: 100%;
     gap: 0.5rem;
   }
 
-  .detail-chart {
+  .signal-chart {
     flex: 1;
     min-height: 8rem;
   }
