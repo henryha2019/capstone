@@ -10,4 +10,8 @@ docs/.Rhistory
 docs/.RData
 
 # Project data folder
-/Data/process/
+Data/
+
+notebook/eda_conveyer_belt.nbconvert.ipynb
+.idea/
+cv_metrics.csv
