@@ -108,6 +108,8 @@ python model/src/preprocess.py --device "<device_name>" [--data_dir <data_direct
 The dashboard currently uses sample data in `data/sample_belt_conveyer.csv` and does not reflect results from our models.
 
 ```bash
-  cd dashboard/src
-  python -m app
+cd dashboard/src
+python -m app
 ```
+
+Go to `http://127.0.0.1:8050/dashboard/` to view the dashboard.

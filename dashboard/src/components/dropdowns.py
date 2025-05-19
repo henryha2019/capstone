@@ -1,37 +1,27 @@
 from dash import dcc, html
-from utils.data_loader import load_data, get_unique_locations
+from utils.data_loader import get_unique_devices, get_unique_locations
 from utils.colours import COLOUR_EMOJI
-df = load_data()
 
-# todo: format for multiple devices, including map from device options to sensor options
-DEVICE_OPTIONS = [
-    {"label": dev, "value": dev}
-    for dev in sorted(df["Device"].dropna().unique())
-]
-
-SENSOR_OPTIONS = [
-    {
-        "label": f"{COLOUR_EMOJI.get(loc, '')} {loc}"  , 
-        "value": loc} 
-    for loc in get_unique_locations(df)
-]
-
-device_dropdown = html.Div([
-    html.Label("Select Device"),
-    dcc.Dropdown(
+def create_device_dropdown():
+    """Create the device dropdown component"""
+    devices = get_unique_devices()
+    return dcc.Dropdown(
         id="device-dropdown",
-        options=DEVICE_OPTIONS,
-        value=DEVICE_OPTIONS[0]["value"],
+        options=[{"label": device, "value": device} for device in devices],
+        value=devices[0] if devices else None,
         clearable=False
     )
-])
 
-sensor_dropdown = html.Div([
-    html.Label("Select Sensor Locations"),
-    dcc.Dropdown(
+def create_sensor_dropdown():
+    """Create the sensor dropdown component"""
+    locations = get_unique_locations()
+    return dcc.Dropdown(
         id="sensor-dropdown",
-        options=SENSOR_OPTIONS,
-        value=[opt["value"] for opt in SENSOR_OPTIONS],
+        options=[{"label": location, "value": location} for location in locations],
+        value=locations[:2] if len(locations) >= 2 else locations,
         multi=True
     )
-])
+
+# Create the dropdown components
+device_dropdown = create_device_dropdown()
+sensor_dropdown = create_sensor_dropdown()
