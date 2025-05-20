@@ -8,6 +8,7 @@ from sklearn.linear_model import Ridge
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.multioutput import MultiOutputRegressor
 from sklearn.model_selection import cross_validate
+from sklearn.model_selection import TimeSeriesSplit
 from sklearn.metrics import make_scorer, mean_squared_error, mean_absolute_error, r2_score, explained_variance_score
 
 
@@ -36,7 +37,7 @@ def main():
 
     # Preprocessing: datetime → timestamp, location → one-hot
     df['datetime'] = pd.to_datetime(df['datetime'])
-    df['datetime_ts'] = df['datetime'].view('int64') // 10**9
+    df['datetime_ts'] = df['datetime'].astype('int64') // 10**9
     df = pd.get_dummies(df, columns=['location'], prefix='loc')
 
     # Features and targets
@@ -105,7 +106,8 @@ def main():
     # Run CV for each model
     results_list = []
     for name, pipe in pipelines.items():
-        cv_res = cross_validate(pipe, X, y, cv=5, scoring=scoring, n_jobs=-1)
+        tscv = TimeSeriesSplit(n_splits=5)
+        cv_res = cross_validate(pipe, X, y, cv=tscv, scoring=scoring, n_jobs=-1)
         summary = evaluate_cv(cv_res)
         summary.insert(0, 'Model', name)
         results_list.append(summary)
