@@ -21,7 +21,7 @@ def read_device_files(device_name, data_dir="../Data/raw", aws_mode=False, s3_bu
             for obj in page.get('Contents', []):
                 if obj['Key'].endswith('.xlsx'):
                     all_files.append(obj['Key'])
-        pattern = f"\({re.escape(device_name)}\)"
+        pattern = f"\\({re.escape(device_name)}\\)"
         matched_files = [f for f in all_files if re.search(pattern, os.path.basename(f))]
         if not matched_files:
             raise FileNotFoundError(f"No files found for device: {device_name} in S3 bucket {s3_bucket}")
