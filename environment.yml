@@ -17,4 +17,6 @@ dependencies:
   - flask=3.1.1
   - apscheduler=3.11.0
   - boto3=1.38.18
-  - tensorflow=2.19.0
+  - pip
+  - pip:
+      - tensorflow==2.19.0

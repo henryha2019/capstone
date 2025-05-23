@@ -36,17 +36,25 @@ def update_radar_chart(df, chart_id):
     
     cols = CHART_1_COLS if chart_id == 1 else CHART_2_COLS
     means = df[cols].mean()
+    labels = [
+        f"<span style='text-align:center; display:block'>{col.replace('_', ' ').title()}<br>{v:.1f}</span>"
+        for col, v in zip(means.index, means.values)
+    ]
 
     fig = go.Figure()
     fig.add_trace(go.Scatterpolar(
         r=means.values,
-        theta=[col.replace("_", " ").title() for col in means.index],
+        theta=labels,
         fill="toself",
-        name="Average"
+        name="Average",
+        hoverinfo="skip"
     ))
 
     fig.update_layout(
-        polar=dict(radialaxis=dict(visible=True, range=[0,100])),
+        polar=dict(
+            radialaxis=dict(visible=False),
+            angularaxis=dict(tickfont=dict(size=16))
+        ),
         showlegend=False,
         margin=dict(t=10, l=10, r=10, b=10)
     )
