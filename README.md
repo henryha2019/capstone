@@ -113,3 +113,75 @@ python -m app
 ```
 
 Go to `http://127.0.0.1:8050/dashboard/` to view the dashboard.
+
+---
+
+## AWS Deployment
+
+### Setting up Cron Jobs on AWS EC2
+
+The data pipeline can be automated using cron jobs on AWS EC2. Here's how to set it up:
+
+1. SSH into your EC2 instance:
+   ```bash
+   ssh -i your-key.pem ubuntu@your-ec2-ip
+   ```
+
+2. Set up the cron job:
+   ```bash
+   crontab -e
+   ```
+
+3. Add the following line to run the pipeline every hour (replace paths with your actual paths):
+   ```bash
+   # Run pipeline at minute 0 of every hour
+   0 * * * * PATH=/home/ubuntu/miniconda3/bin:/home/ubuntu/miniconda3/condabin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin /bin/bash -c '/home/jupyter-ubuntu/capstone/model/scripts/run_pipeline.sh >> /home/jupyter-ubuntu/capstone/model/scripts/logs/pipeline_$(date +\%Y\%m\%d_\%H\%M\%S).log 2>&1'
+   ```
+
+    This cron job:
+    - Runs at minute 0 of every hour
+    - Sets the necessary PATH environment variables
+    - Executes the pipeline script
+    - Logs output to timestamped files in the logs directory
+
+4. Verify the cron job:
+   ```bash
+   crontab -l
+   ```
+
+5. Check cron service status:
+   ```bash
+   sudo systemctl status cron
+   ```
+
+6. Monitor the logs:
+   ```bash
+   # View all log files
+   ls -l /home/jupyter-ubuntu/capstone/model/scripts/logs/
+   
+   # View the latest log
+   tail -f /home/jupyter-ubuntu/capstone/model/scripts/logs/pipeline_*.log
+   ```
+
+If the cron job isn't working as expected:
+
+1. Check cron logs:
+   ```bash
+   sudo grep CRON /var/log/syslog
+   ```
+
+2. Verify script permissions:
+   ```bash
+   chmod +x /home/jupyter-ubuntu/capstone/model/scripts/run_pipeline.sh
+   ```
+
+3. Ensure logs directory exists:
+   ```bash
+   mkdir -p /home/jupyter-ubuntu/capstone/model/scripts/logs
+   chmod 755 /home/jupyter-ubuntu/capstone/model/scripts/logs
+   ```
+
+4. Common issues:
+   - "Python not found in PATH": Make sure the PATH in the crontab entry includes your Python installation
+   - "No MTA installed": This is normal and can be ignored if logs are being written to files
+   - Permission denied: Check file and directory permissions
