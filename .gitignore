@@ -16,4 +16,4 @@ notebook/eda_conveyer_belt.nbconvert.ipynb
 .idea/
 cv_metrics.csv
 
-model/scripts/logs/
+*.log

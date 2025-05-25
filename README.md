@@ -93,6 +93,7 @@ python model/src/preprocess.py --device "<device_name>" [--data_dir <data_direct
 
    ```bash
    Data/process/8#Belt Conveyer_merged.csv
+   model/src/preprocessing.log
    ```
 
 2. To process data for `Tube Mill` using custom directories:
