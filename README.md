@@ -63,6 +63,7 @@ The preprocessing script processes raw sensor and ratings data and outputs a mer
 ### **Supported Devices**
 
 The script currently supports the following devices:
+
 1. `1#High-Temp Fan`
 2. `8#Belt Conveyer`
 3. `Tube Mill`
@@ -75,7 +76,7 @@ Run the script from the root directory:
 python model/src/preprocess.py --device "<device_name>" [--data_dir <data_directory>] [--output_dir <output_directory>]
 ```
 
-#### **Arguments**:
+#### **Arguments**
 
 - `--device` (Required): Specify one of the supported device names (e.g. `8#Belt Conveyer`).
 - `--data_dir` (Optional): Directory containing raw `.xlsx` files. Defaults to `Data/raw`.

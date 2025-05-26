@@ -50,7 +50,11 @@ class SignalVisualizer:
         return signal, time, freq
 
     def compute_y_values(self, signal):
+        # remove DC component from signal by subtracting mean
+        signal = signal - np.mean(signal)
         envelope = np.abs(hilbert(signal))
+        # do the same with the envelope
+        envelope = envelope - np.mean(envelope)
         fft_vals = np.abs(fft(signal))[:len(signal)//2]
         fft_env = np.abs(fft(envelope))[:len(signal)//2]
         return envelope, fft_vals, fft_env

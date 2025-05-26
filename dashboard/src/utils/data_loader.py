@@ -39,7 +39,6 @@ class DataLoader:
         self._initialize(force=True)
     
     def _initialize(self, force=False):
-        """Initialize the data loader"""
         if hasattr(self, '_data_lock') and not force:
             return
         self._data_lock = threading.Lock()
@@ -51,7 +50,7 @@ class DataLoader:
         else:
             current_file = Path(__file__)
             project_root = current_file.parent.parent.parent.parent
-            self._data_path = project_root / "Data" / "sample_belt_conveyer.csv"
+            self._data_path = project_root / "Data" / "sample_belt_conveyer_full.csv"
             logger.info(f"Data path set to: {self._data_path}")
         
         self._scheduler = BackgroundScheduler()
@@ -66,7 +65,6 @@ class DataLoader:
         return pd.read_csv(io.BytesIO(obj['Body'].read()))
     
     def update_data(self):
-        """Update the data from the CSV files"""
         try:
             logger.info("Starting data update...")
             if self.aws_mode:
@@ -87,28 +85,54 @@ class DataLoader:
             raise
     
     def get_data(self):
-        """Get the current data"""
         if self._data is None:
             self.update_data()
         return self._data
     
     def get_last_update_time(self):
-        """Get the timestamp of the last data update"""
         return self._last_update
 
 # Create a global instance
 data_loader = DataLoader()
 
-def load_data():
-    """Load data using the data loader"""
-    return data_loader.get_data()
+def load_data(time_range="20min"):
+    """Loads data then filters by user selected time range from last datapoint"""
+    df = data_loader.get_data()
+        
+    time_deltas = {
+        "20min": pd.Timedelta(minutes=20),
+        "24h": pd.Timedelta(hours=24),
+        "7d": pd.Timedelta(days=7)
+    }
+
+    resample_rules = {
+        "20min": None,
+        "24h": "5min",
+        "7d": "15min"
+    }
+
+    delta = time_deltas.get(time_range)
+    if delta and not df.empty:
+        latest_time = df["timestamp"].max()
+        cutoff = latest_time - delta
+        df = df[df["timestamp"] >= cutoff]
+
+        rule = resample_rules.get(time_range)
+        if rule:
+            df = (
+                df.set_index("timestamp")
+                .groupby(["location", "Device"])
+                .resample(rule)
+                .mean()
+                .reset_index()
+            )
+
+    return df
 
 def get_unique_locations():
-    """Get unique locations from the data"""
     df = data_loader.get_data()
     return sorted(df["location"].dropna().unique())
 
 def get_unique_devices():
-    """Get unique devices from the data"""
     df = data_loader.get_data()
     return sorted(df["Device"].unique())
