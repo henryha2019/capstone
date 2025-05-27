@@ -60,7 +60,7 @@ def main():
 
     df = df.drop(columns=['Device'], errors='ignore').dropna()
     # Using a sample dataset comment line below for full data
-    df = df[:100000]
+    # df = df[:100000]
 
     # Preprocessing: datetime → timestamp, location → one-hot
     df['datetime'] = pd.to_datetime(df['datetime'])
@@ -94,41 +94,24 @@ def main():
     ])
 
     # ColumnTransformers for each
-    preprocessor = ColumnTransformer([
-        ('num', numeric_transformer, numeric_features),
-        ('cat', categorical_transformer, categorical_features)
-    ])
-    preprocessor_poly2 = ColumnTransformer([
-        ('num', numeric_poly2, numeric_features),
-        ('cat', categorical_transformer, categorical_features)
-    ])
-    preprocessor_poly5 = ColumnTransformer([
-        ('num', numeric_poly5, numeric_features),
-        ('cat', categorical_transformer, categorical_features)
-    ])
-
-    # Define all possible pipelines
-    all_pipelines = {
-        'Baseline': Pipeline([('pre', preprocessor),
-                            ('reg', DummyRegressor(strategy='mean'))]),
-        'Ridge': Pipeline([('pre', preprocessor),
-                         ('reg', MultiOutputRegressor(Ridge(alpha=1.0)))]),
-        'PolyRidgeDegree2': Pipeline([('pre', preprocessor_poly2),
-                         ('reg', MultiOutputRegressor(Ridge(alpha=1.0)))]),
-        'PolyRidgeDegree5': Pipeline([('pre', preprocessor_poly5),
-                         ('reg', MultiOutputRegressor(Ridge(alpha=1.0)))]),
-        'RandomForest': Pipeline([('pre', preprocessor),
-                       ('reg', MultiOutputRegressor(RandomForestRegressor(
-                           n_estimators=100, random_state=42)))])
+    preprocessors = {
+        'Baseline': ColumnTransformer([('num', numeric_transformer, numeric_features), ('cat', categorical_transformer, categorical_features)]),
+        'Ridge': ColumnTransformer([('num', numeric_transformer, numeric_features), ('cat', categorical_transformer, categorical_features)]),
+        'PolyRidgeDegree2': ColumnTransformer([('num', numeric_poly2, numeric_features), ('cat', categorical_transformer, categorical_features)]),
+        'PolyRidgeDegree5': ColumnTransformer([('num', numeric_poly5, numeric_features), ('cat', categorical_transformer, categorical_features)]),
+        'RandomForest': ColumnTransformer([('num', numeric_transformer, numeric_features), ('cat', categorical_transformer, categorical_features)])
     }
 
-    # Select pipelines based on model argument
-    if args.model == 'all':
-        pipelines = all_pipelines
-    else:
-        pipelines = {args.model: all_pipelines[args.model]}
+    models = {
+        'Baseline': DummyRegressor(strategy='mean'),
+        'Ridge': Ridge(alpha=1.0),
+        'PolyRidgeDegree2': Ridge(alpha=1.0),
+        'PolyRidgeDegree5': Ridge(alpha=1.0),
+        'RandomForest': RandomForestRegressor(n_estimators=100, random_state=42)
+    }
 
-    # Cross-validation setup
+    selected_models = models if args.model == 'all' else {args.model: models[args.model]}
+
     scoring = {
         'neg_mean_squared_error': make_scorer(mean_squared_error, greater_is_better=False),
         'neg_mean_absolute_error': make_scorer(mean_absolute_error, greater_is_better=False),
@@ -136,14 +119,17 @@ def main():
         'explained_variance': make_scorer(explained_variance_score)
     }
 
-    # Run CV for each model
     results_list = []
-    for name, pipe in pipelines.items():
-        tscv = TimeSeriesSplit(n_splits=5)
-        cv_res = cross_validate(pipe, X, y, cv=tscv, scoring=scoring, n_jobs=-1)
-        summary = evaluate_cv(cv_res)
-        summary.insert(0, 'Model', name)
-        results_list.append(summary)
+    for model_name, model in selected_models.items():
+        preprocessor = preprocessors[model_name]
+        for target_col in y.columns:
+            pipe = Pipeline([('pre', preprocessor), ('reg', model)])
+            tscv = TimeSeriesSplit(n_splits=5)
+            cv_res = cross_validate(pipe, X, y[target_col], cv=tscv, scoring=scoring, n_jobs=-1)
+            summary = evaluate_cv(cv_res)
+            summary.insert(0, 'Target', target_col)
+            summary.insert(0, 'Model', model_name)
+            results_list.append(summary)
 
     cv_df = pd.concat(results_list, ignore_index=True)
     print("Cross-Validation Metrics (averaged):")
