@@ -1,5 +1,9 @@
 import pandas as pd
 import numpy as np
+import argparse
+import boto3
+import io
+import os
 from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import StandardScaler, OneHotEncoder, PolynomialFeatures
@@ -29,8 +33,31 @@ def evaluate_cv(cv_results):
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Train and evaluate machine learning models for device data.")
+    parser.add_argument("--model", choices=['Baseline', 'Ridge', 'PolyRidgeDegree2', 'PolyRidgeDegree5', 'RandomForest', 'all'], 
+                      default='all', help="Model to train (default: all)")
+    parser.add_argument("--aws", action="store_true", help="Read/write data from/to S3 bucket")
+    parser.add_argument("--device", default="8#Belt Conveyer", help="Device name (default: 8#Belt Conveyer)")
+    args = parser.parse_args()
+
     # Load and clean data
-    df = pd.read_csv('Data/process/8#Belt Conveyer_merged.csv')
+    if args.aws:
+        s3 = boto3.client('s3')
+        bucket = 'brilliant-automation-capstone'
+        key = f"process/{args.device}_merged.csv"
+        try:
+            obj = s3.get_object(Bucket=bucket, Key=key)
+            df = pd.read_csv(io.BytesIO(obj['Body'].read()))
+        except Exception as e:
+            print(f"Error reading from S3: {e}")
+            return
+    else:
+        try:
+            df = pd.read_csv(f'Data/process/{args.device}_merged.csv')
+        except FileNotFoundError:
+            print(f"Error: Could not find data file for device {args.device}")
+            return
+
     df = df.drop(columns=['Device'], errors='ignore').dropna()
     # Using a sample dataset comment line below for full data
     df = df[:100000]
@@ -80,20 +107,26 @@ def main():
         ('cat', categorical_transformer, categorical_features)
     ])
 
-    # Define pipelines
-    pipelines = {
+    # Define all possible pipelines
+    all_pipelines = {
         'Baseline': Pipeline([('pre', preprocessor),
-                              ('reg', DummyRegressor(strategy='mean'))]),
+                            ('reg', DummyRegressor(strategy='mean'))]),
         'Ridge': Pipeline([('pre', preprocessor),
-                           ('reg', MultiOutputRegressor(Ridge(alpha=1.0)))]),
-        'PolyRidge(deg=2)': Pipeline([('pre', preprocessor_poly2),
-                                      ('reg', MultiOutputRegressor(Ridge(alpha=1.0)))]),
-        'PolyRidge(deg=5)': Pipeline([('pre', preprocessor_poly5),
-                                      ('reg', MultiOutputRegressor(Ridge(alpha=1.0)))]),
+                         ('reg', MultiOutputRegressor(Ridge(alpha=1.0)))]),
+        'PolyRidgeDegree2': Pipeline([('pre', preprocessor_poly2),
+                         ('reg', MultiOutputRegressor(Ridge(alpha=1.0)))]),
+        'PolyRidgeDegree5': Pipeline([('pre', preprocessor_poly5),
+                         ('reg', MultiOutputRegressor(Ridge(alpha=1.0)))]),
         'RandomForest': Pipeline([('pre', preprocessor),
-                                  ('reg', MultiOutputRegressor(RandomForestRegressor(
-                                      n_estimators=100, random_state=42)))]),
+                       ('reg', MultiOutputRegressor(RandomForestRegressor(
+                           n_estimators=100, random_state=42)))])
     }
+
+    # Select pipelines based on model argument
+    if args.model == 'all':
+        pipelines = all_pipelines
+    else:
+        pipelines = {args.model: all_pipelines[args.model]}
 
     # Cross-validation setup
     scoring = {
@@ -115,7 +148,20 @@ def main():
     cv_df = pd.concat(results_list, ignore_index=True)
     print("Cross-Validation Metrics (averaged):")
     print(cv_df.to_string(index=False))
-    cv_df.to_csv('cv_metrics.csv', index=False)
+
+    # Save results
+    if args.aws:
+        s3 = boto3.client('s3')
+        bucket = 'brilliant-automation-capstone'
+        key = f"results/{args.device}_{args.model}_cv_metrics.csv"
+        csv_buffer = io.StringIO()
+        cv_df.to_csv(csv_buffer, index=False)
+        s3.put_object(Bucket=bucket, Key=key, Body=csv_buffer.getvalue())
+        print(f"Results saved to s3://{bucket}/{key}")
+    else:
+        output_file = f'{args.device}_{args.model}_cv_metrics.csv'
+        cv_df.to_csv(output_file, index=False)
+        print(f"Results saved to {output_file}")
 
 
 if __name__ == '__main__':
