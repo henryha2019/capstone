@@ -103,19 +103,19 @@ def read_device_files(device_name, data_dir="../Data/raw", aws_mode=False, s3_bu
         if not matched_files:
             logging.error(f"No files found for device: {device_name} in S3 bucket {s3_bucket}")
             raise FileNotFoundError(f"No files found for device: {device_name} in S3 bucket {s3_bucket}")
-        rating_file = None
+        rating_files = []
         feature_files = []
         for f in matched_files:
             filename = os.path.basename(f)
             if re.search(r"\bRating\b", filename, re.IGNORECASE):
-                rating_file = f
+                rating_files.append(f)
             else:
                 feature_files.append(f)
-        if not rating_file:
+        if not rating_files:
             logging.error(f"No Rating file found for device: {device_name} in S3 bucket {s3_bucket}")
             raise FileNotFoundError(f"No Rating file found for device: {device_name} in S3 bucket {s3_bucket}")
 
-        logging.info(f"Rating file: {rating_file}")
+        logging.info(f"Rating files: {rating_files}")
         logging.info(f"Feature files: {feature_files}")
 
         feature_dfs = []
@@ -127,8 +127,12 @@ def read_device_files(device_name, data_dir="../Data/raw", aws_mode=False, s3_bu
             df["location"] = location
             feature_dfs.append(df)
         features_df = pd.concat(feature_dfs, ignore_index=True)
-        obj = s3.get_object(Bucket=s3_bucket, Key=rating_file)
-        rating_df = pd.read_excel(io.BytesIO(obj['Body'].read()))
+        rating_dfs = []
+        for file in rating_files:
+            obj = s3.get_object(Bucket=s3_bucket, Key=file)
+            df = pd.read_excel(io.BytesIO(obj['Body'].read()))
+            rating_dfs.append(df)
+        rating_df = pd.concat(rating_dfs, ignore_index=True)
         return features_df, rating_df
     else:
         logging.info(f"Reading files from local directory: {data_dir}")
@@ -141,21 +145,21 @@ def read_device_files(device_name, data_dir="../Data/raw", aws_mode=False, s3_bu
         if not matched_files:
             logging.error(f"No files found for device: {device_name}")
             raise FileNotFoundError(f"No files found for device: {device_name}")
-        # Separate rating file from location files
-        rating_file = None
+        # Separate rating files from location files
+        rating_files = []
         feature_files = []
         for f in matched_files:
             filename = os.path.basename(f)
             if re.search(r"\bRating\b", filename, re.IGNORECASE):
-                rating_file = f
+                rating_files.append(f)
             else:
                 feature_files.append(f)
-        if not rating_file:
+        if not rating_files:
             logging.error(f"No Rating file found for device: {device_name}")
             raise FileNotFoundError(f"No Rating file found for device: {device_name}")
         # Read and combine all feature files
 
-        logging.info(f"Rating file: {rating_file}")
+        logging.info(f"Rating files: {rating_files}")
         logging.info(f"Feature files: {feature_files}")
 
         feature_dfs = []
@@ -166,7 +170,11 @@ def read_device_files(device_name, data_dir="../Data/raw", aws_mode=False, s3_bu
             df["location"] = location
             feature_dfs.append(df)
         features_df = pd.concat(feature_dfs, ignore_index=True)
-        rating_df = pd.read_excel(rating_file)
+        rating_dfs = []
+        for file in rating_files:
+            df = pd.read_excel(file)
+            rating_dfs.append(df)
+        rating_df = pd.concat(rating_dfs, ignore_index=True)
         return features_df, rating_df
 
 def filter_datetime_range(df, start, end):
