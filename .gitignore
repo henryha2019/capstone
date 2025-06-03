@@ -10,7 +10,7 @@ docs/.Rhistory
 docs/.RData
 
 # Project data folder
-Data/
+Data/**
 
 notebook/eda_conveyer_belt.nbconvert.ipynb
 .idea/

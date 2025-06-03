@@ -17,18 +17,24 @@ def register_callbacks(app):
             Output("signal-chart-env-fft", "figure")
         ],
         [
-            Input("date-range-dropdown", "value"),
+            Input("start-date", "date"),
+            Input("end-date", "date"),
+            Input("start-time", "value"),
+            Input("end-time", "value"),
             Input("device-dropdown", "value"),
             Input("sensor-dropdown", "value")
         ]
     )
-    def update_all_charts(selected_time_range, selected_device, selected_sensors):
+    def update_all_charts(start_date, end_date, start_time, end_time, selected_device, selected_sensors):
         # todo: if no sensor selected, disappear plots and give message
         # if not selected_sensors:
         
-        df = load_data(selected_time_range)
+        start_datetime = f"{start_date} {start_time}" if start_date and start_time else None
+        end_datetime = f"{end_date} {end_time}" if end_date and end_time else None
+
+        df = load_data(start_datetime, end_datetime)
         df = df[(df["Device"] == selected_device) & (df["location"].isin(selected_sensors))]
-        
+
         if df.empty or "timestamp" not in df.columns:
             header_str = "No data loaded"
         else:

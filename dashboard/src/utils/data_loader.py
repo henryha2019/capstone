@@ -35,7 +35,6 @@ class DataLoader:
     def set_aws_mode(self, enabled: bool):
         self.aws_mode = enabled
         logger.info(f"AWS mode set to {enabled}")
-        # Re-initialize to update data path
         self._initialize(force=True)
     
     def _initialize(self, force=False):
@@ -75,7 +74,6 @@ class DataLoader:
             df["timestamp"] = pd.to_datetime(df["timestamp"])
             df = df.drop(columns=["Unnamed: 0"], errors="ignore")
             
-            # Only lock when updating the shared data
             with self._data_lock:
                 self._data = df
                 self._last_update = datetime.now()
@@ -92,32 +90,24 @@ class DataLoader:
     def get_last_update_time(self):
         return self._last_update
 
-# Create a global instance
 data_loader = DataLoader()
 
-def load_data(time_range="20min"):
-    """Loads data then filters by user selected time range from last datapoint"""
+def load_data(start_time=None, end_time=None):
+    """Loads data then filters and resample by user selected time range"""
     df = data_loader.get_data()
         
-    time_deltas = {
-        "20min": pd.Timedelta(minutes=20),
-        "24h": pd.Timedelta(hours=24),
-        "7d": pd.Timedelta(days=7)
-    }
+    if start_time and end_time and not df.empty:
+        df = df[(df["timestamp"] >= pd.to_datetime(start_time)) &
+                (df["timestamp"] <= pd.to_datetime(end_time))]
 
-    resample_rules = {
-        "20min": None,
-        "24h": "5min",
-        "7d": "15min"
-    }
+        delta = pd.to_datetime(end_time) - pd.to_datetime(start_time)
+        if delta <= pd.Timedelta(hours=1):
+            rule = None
+        elif delta <= pd.Timedelta(days=1):
+            rule = "5min"
+        else:
+            rule = "15min"
 
-    delta = time_deltas.get(time_range)
-    if delta and not df.empty:
-        latest_time = df["timestamp"].max()
-        cutoff = latest_time - delta
-        df = df[df["timestamp"] >= cutoff]
-
-        rule = resample_rules.get(time_range)
         if rule:
             df = (
                 df.set_index("timestamp")

@@ -1,18 +1,31 @@
 from dash import dcc, html
-from utils.data_loader import get_unique_devices, get_unique_locations
+import dash_bootstrap_components as dbc
+from utils.data_loader import get_unique_devices, get_unique_locations, data_loader
 from utils.colours import COLOUR_EMOJI
 
-def create_date_range_dropdown():
-    return dcc.Dropdown(
-        id='date-range-dropdown',
-        options=[
-            {'label': 'Last 20 minutes', 'value': '20min'},
-            {'label': '24 hours', 'value': '24h'},
-            {'label': 'Last 7 days', 'value': '7d'},
-        ],
-        value='20min',
-        clearable=False
-    )
+def create_date_range_dropdown(id_prefix):
+    df = data_loader.get_data()
+    min_ts = df["timestamp"].min()
+    max_ts = df["timestamp"].max()
+
+    date = min_ts.date() if id_prefix == "start" else max_ts.date()
+    time = min_ts.strftime("%H:%M") if id_prefix == "start" else max_ts.strftime("%H:%M")
+
+    return dbc.InputGroup([
+        dcc.DatePickerSingle(
+            id=f"{id_prefix}-date",
+            min_date_allowed=min_ts.date(),
+            max_date_allowed=max_ts.date(),
+            date=date
+        ),
+        dbc.Input(
+            id=f"{id_prefix}-time",
+            type="time",
+            value=time,
+            debounce=True
+        )
+    ], className="datetime-selector")
+
 
 def create_device_dropdown():
     devices = get_unique_devices()
@@ -32,6 +45,5 @@ def create_sensor_dropdown():
         multi=True
     )
 
-date_range_dropdown = create_date_range_dropdown()
 device_dropdown = create_device_dropdown()
 sensor_dropdown = create_sensor_dropdown()
