@@ -32,7 +32,7 @@ def register_callbacks(app):
         start_datetime = f"{start_date} {start_time}" if start_date and start_time else None
         end_datetime = f"{end_date} {end_time}" if end_date and end_time else None
 
-        df = load_data(start_datetime, end_datetime)
+        df = load_data(selected_device, start_datetime, end_datetime)
         df = df[(df["Device"] == selected_device) & (df["location"].isin(selected_sensors))]
 
         if df.empty or "timestamp" not in df.columns:

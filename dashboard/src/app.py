@@ -3,10 +3,8 @@ from flask import Flask, redirect
 import dash
 from dash import html
 import dash_bootstrap_components as dbc
-from components.layout import create_layout
-from callbacks.handlers import register_callbacks
-from utils.data_loader import data_loader
 import logging
+import os
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -16,9 +14,10 @@ parser = argparse.ArgumentParser(description="Run dashboard app")
 parser.add_argument('--aws', action='store_true', help='Load data from S3 bucket instead of local file')
 args, unknown = parser.parse_known_args()
 
-# Pass aws flag to data_loader
+# Set environment variable for AWS mode before importing data_loader
 if args.aws:
-    data_loader.set_aws_mode(True)
+    os.environ['DASHBOARD_AWS_MODE'] = 'true'
+    logger.info("AWS mode enabled via environment variable")
 
 # Initialize Flask app
 server = Flask(__name__)
@@ -31,6 +30,11 @@ app = dash.Dash(
     url_base_pathname='/dashboard/'
 )
 app.title = "Device Sensor Dashboard"
+
+# Now import components after AWS mode is set
+from utils.data_loader import data_loader
+from components.layout import create_layout
+from callbacks.handlers import register_callbacks
 
 # Set up the Dash layout
 app.layout = create_layout()
@@ -46,7 +50,7 @@ def index():
 if __name__ == "__main__":
     # Initial data load
     logger.info("Performing initial data load...")
-    data_loader.update_data()
+    data_loader.update_all_data()
     
     logger.info("Starting Flask server...")
     server.run(debug=True, host='0.0.0.0', port=8050)
