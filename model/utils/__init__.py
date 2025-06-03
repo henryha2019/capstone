@@ -7,6 +7,8 @@ from .eda_utils import (
     plot_feature_boxplots,
     plot_target_distributions,
     plot_target_boxplots,
+    plot_input_target_correlation_heatmap,
+    plot_input_target_pairplot,
     get_device_name
 )
 
@@ -20,6 +22,8 @@ __all__ = [
     "show_summary",
     "plot_feature_distributions",
     "plot_feature_correlation_heatmap",
+    "plot_input_target_correlation_heatmap",
+    "plot_input_target_pairplot",
     "plot_feature_boxplots",
     "plot_target_distributions",
     "plot_target_boxplots",

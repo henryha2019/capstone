@@ -219,3 +219,60 @@ def get_device_name(device):
         str: A formatted device name (e.g., 'DEVICE 1').
     """
     return device.upper().replace('_', ' ')
+
+def plot_input_target_correlation_heatmap(df, input_features, target_features, title, save_path=None):
+    """
+    Plot a heatmap showing the correlation between input and target features.
+
+    Args:
+        df (pd.DataFrame): The DataFrame containing the data.
+        input_features (list of str): List of input feature column names.
+        target_features (list of str): List of target feature column names.
+        title (str): Title of the heatmap.
+        save_path (str, optional): File path to save the plot.
+
+    Returns:
+        None
+    """
+    if not set(input_features + target_features).issubset(df.columns):
+        raise ValueError("Some input or target features are missing from the DataFrame.")
+
+    correlation_matrix = df[input_features + target_features].corr()
+
+    plt.figure(figsize=(12, 8))
+    sns.heatmap(
+        correlation_matrix.loc[input_features, target_features],
+        annot=True, fmt=".2f", cmap="coolwarm", cbar=True
+    )
+    plt.title(title, fontsize=16)
+    plt.xlabel("Target Features")
+    plt.ylabel("Input Features")
+
+    if save_path:
+        plt.savefig(f"{save_path}/input_target_correlation_heatmap.png", dpi=300, bbox_inches="tight")
+    plt.show()
+
+def plot_input_target_pairplot(df, input_features, target_features, title,
+                                      save_path=None):
+    """
+    Plot a pairplot showing the relationship between input features and target features.
+
+    Args:
+        df (pd.DataFrame): The DataFrame containing the data.
+        input_features (list of str): List of input feature column names.
+        target_features (list of str): List of target feature column names.
+        title (str): Title of the Pairplot.
+        save_path (str, optional): File path to save the plot.
+
+    Returns:
+        None
+    """
+    if not set(input_features + target_features).issubset(df.columns):
+        raise ValueError("Some input or target features are missing from the DataFrame.")
+
+    sns.pairplot(df, x_vars=input_features, y_vars=target_features, height=3.5)
+    plt.suptitle(title, y=1.02, fontsize=16)
+
+    if save_path:
+        plt.savefig(f"{save_path}/input_target_pairplot.png", dpi=300, bbox_inches="tight")
+    plt.show()
