@@ -1,33 +1,43 @@
 from dash import html, dcc
 import dash_bootstrap_components as dbc
-from components.dropdowns import create_date_range_dropdown, device_dropdown, sensor_dropdown
-from components.radar_chart import radar_chart_1, radar_chart_2
-from components.overlay_plot import frequency_chart
-from components.signal_charts import signal_charts_column
-from components.header_timestamp import header_timestamp
+from .dropdowns import create_date_range_dropdown, device_dropdown, dual_dropdown
+from .radar_graphs import radar_graph_1, radar_graph_2
+from .overlay_plot import rating_health_graph, high_frequency_graph
+from .signal_graphs import signal_graph_sig_raw, signal_graph_env, signal_graph_sig_fft, signal_graph_env_fft
+from .header_timestamp import header_timestamp
 
-def summary_view():
-    return html.Div([
-        # Radar charts
+def ratings_view():
+    return[
+        # Rating radar graphs
         dbc.Row([
-            dbc.Col(radar_chart_1),
-            dbc.Col(radar_chart_2)
-        ], className="radar-row"),
-        # Overlay plot
-        dbc.Row([
-            dbc.Col(frequency_chart)
-        ], class_name="frequency-row")
-    ], className="dashboard-col")
+            dbc.Col(radar_graph_1),
+            dbc.Col(radar_graph_2)
+        ], className="graph-row"),
 
-def signal_view():
-    return html.Div([
-        html.Div([
-            dcc.Graph(id="signal-chart-sig-raw", className="signal-chart", config={"displayModeBar": False}),
-            dcc.Graph(id="signal-chart-sig-fft", className="signal-chart", config={"displayModeBar": False}),
-            dcc.Graph(id="signal-chart-env", className="signal-chart", config={"displayModeBar": False}),
-            dcc.Graph(id="signal-chart-env-fft", className="signal-chart", config={"displayModeBar": False}),
-        ], className="signal-row")
-    ], style={"height": "100%", "width": "100%"})
+        # Rating overlay
+        dbc.Row([
+            dbc.Col(rating_health_graph)
+        ], className="graph-row")
+    ]
+
+def sensor_view():
+    return [
+        # High frequency overlay
+        dbc.Row([
+            dbc.Col(high_frequency_graph)
+        ], className="graph-row"),
+
+        # Signal graphs
+        dbc.Row([
+            dbc.Col(signal_graph_sig_raw),
+            dbc.Col(signal_graph_sig_fft),
+        ], className="graph-row"),
+        dbc.Row([
+            dbc.Col(signal_graph_env),
+            dbc.Col(signal_graph_env_fft),
+        ], className="graph-row")
+    ]
+
 
 def create_layout():
     return dbc.Container([
@@ -37,31 +47,37 @@ def create_layout():
             dbc.Col([header_timestamp()]),
         ]),
 
-        # Dropdowns
+        # Device and Time Dropdowns
         dbc.Row([
-            dbc.Col(create_date_range_dropdown("start"), width=2),
-            dbc.Col(create_date_range_dropdown("end"), width=2),
-            dbc.Col(device_dropdown, width=3, className="dropdown-input"),
-            dbc.Col(sensor_dropdown, width=5, className="dropdown-input"),
+            dbc.Col(device_dropdown, width=4, className="dropdown-input"),
+            dbc.Col(create_date_range_dropdown("start"), width=4),
+            dbc.Col(create_date_range_dropdown("end"), width=4),
         ]),
 
+        # Tabs
         dbc.Row([
             dbc.Col([
                 dcc.Tabs(
                     id="view-tabs",
-                    value="summary",
+                    value="ratings",
                     children=[
-                        dcc.Tab(label="Summary View", value="summary"),
-                        dcc.Tab(label="Signal View", value="signal"),
+                        dcc.Tab(label="Ratings Data", value="ratings"),
+                        dcc.Tab(label="Sensor Location Data", value="sensor"),
                     ]
                 )
             ])
         ]),
 
+        # Rating/Location Dropdowns
+        dbc.Row([
+            dbc.Col(dual_dropdown, width=12, className="dropdown-input"),
+        ]),
+
+        # Graphs
         dbc.Row([
             dbc.Col([
-                html.Div(id="summary-view", children=summary_view(), className="view-container"),
-                html.Div(id="signal-view", children=signal_view(), className="view-container", style={"display": "none"})
-            ], className="dashboard-col")
-        ], className="dashboard-row")
+                html.Div(id="ratings-view", children=ratings_view(), className="tab-content-container"),
+                html.Div(id="signal-view", children=sensor_view(), className="tab-content-container", style={"display": "none"})
+            ])
+        ])
     ], className="dash-container", fluid=True)

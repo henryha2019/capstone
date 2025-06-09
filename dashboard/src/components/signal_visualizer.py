@@ -3,7 +3,7 @@ from scipy.fft import fft, fftfreq
 from scipy.signal import hilbert
 import plotly.graph_objects as go
 from utils.plot_config import format_plot
-from utils.colours import COLOUR_MAP
+from utils.config import LOCATION_COLOUR_MAP, FEATURES
 
 class SignalVisualizer:
     """
@@ -20,7 +20,7 @@ class SignalVisualizer:
     Attributes:
         df (pd.DataFrame): Input DataFrame containing 'timestamp', 'location', and 'Vibration Velocity Z' columns.
         T (float): Sampling interval in seconds.
-        figures (list): List of Plotly `go.Figure` objects, one per chart.
+        figures (list): List of Plotly `go.Figure` objects, one per graph.
 
     Methods:
         preprocess(location):
@@ -43,17 +43,17 @@ class SignalVisualizer:
 
     def preprocess(self, location):
         df_loc = self.df[self.df["location"] == location].sort_values("timestamp")
-        signal = df_loc["Vibration Velocity Z"].dropna().values
+        signal = df_loc[FEATURES["vibration_velocity_z"]].dropna().values
         time = df_loc["timestamp"].values
         N = len(signal)
         freq = fftfreq(N, self.T)[:N//2]
         return signal, time, freq
 
     def compute_y_values(self, signal):
-        # remove DC component from signal by subtracting mean
+        # Remove DC component from signal by subtracting mean
         signal = signal - np.mean(signal)
         envelope = np.abs(hilbert(signal))
-        # do the same with the envelope
+        # Do the same with the envelope
         envelope = envelope - np.mean(envelope)
         fft_vals = np.abs(fft(signal))[:len(signal)//2]
         fft_env = np.abs(fft(envelope))[:len(signal)//2]
@@ -63,17 +63,17 @@ class SignalVisualizer:
         signal, time, freq = self.preprocess(location)
         envelope, fft_vals, fft_env = self.compute_y_values(signal)
 
-        chart_data = {
+        graph_data = {
             0: (time, signal, "Time", "Velocity [mm/s]"),
             1: (freq, fft_vals, "Frequency [Hz]", "Amplitude"),
             2: (time, envelope, "Time", "Envelope Amplitude"),
             3: (freq, fft_env, "Frequency [Hz]", "Amplitude"),
         }
 
-        for i, (x, y, xlabel, ylabel) in chart_data.items():
+        for i, (x, y, xlabel, ylabel) in graph_data.items():
             self.figures[i].add_trace(go.Scatter(
                 x=x, y=y, mode="lines", name=location,
-                line=dict(color=COLOUR_MAP.get(location))
+                line=dict(color=LOCATION_COLOUR_MAP.get(location))
             ))
             self.figures[i].update_layout(xaxis_title=xlabel, yaxis_title=ylabel)
 
