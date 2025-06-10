@@ -9,11 +9,6 @@ import pandas as pd
 PROJECT_ROOT = os.path.abspath(os.path.join(os.getcwd(), ".."))
 sys.path.append(PROJECT_ROOT)
 
-from utils import (
-    load_and_clean_data,
-    DEVICE_TARGET_FEATURES,
-)
-
 # Set up logging to console only
 logging.basicConfig(
     level=logging.INFO,
@@ -32,6 +27,25 @@ DEVICE_MAP = {
 
 DEVICE_NAMES = ["8#Belt Conveyer", "1#High-Temp Fan", "Tube Mill"]
 
+DEVICE_TARGET_FEATURES = {
+    "conveyor_belt": [
+        'alignment_status', 'bearing_lubrication', 'crest_factor', 'electromagnetic_status',
+        'fit_condition', 'kurtosis_opt', 'rms_10_25khz', 'rms_1_10khz',
+        'rotor_balance_status', 'rubbing_condition', 'velocity_rms', 'peak_value_opt'
+    ],
+    "high_temp_fan": ['velocity_rms', 'crest_factor', 'kurtosis_opt', 'rms_1_10khz',
+       'rms_10_25khz', 'rotor_balance_status', 'alignment_status',
+       'fit_condition', 'bearing_lubrication', 'rubbing_condition',
+       'electromagnetic_status'
+     ],
+    "tube_mill": ['velocity_rms', 'crest_factor', 'kurtosis_opt', 'rms_1_10khz',
+       'rms_10_25khz', 'peak_value_opt', 'rms_0_10hz', 'rms_10_100hz',
+       'peak_10_1000hz', 'rotor_balance_status', 'alignment_status',
+       'fit_condition', 'bearing_lubrication', 'rubbing_condition',
+       'electromagnetic_status'
+    ]
+}
+
 def process_device(device_name, aws_mode=False, s3_bucket='brilliant-automation-capstone'):
     """Process a single device's data, either from local files or S3."""
     logging.info(f"Processing data for {device_name} (AWS mode: {aws_mode})")
@@ -47,8 +61,6 @@ def process_device(device_name, aws_mode=False, s3_bucket='brilliant-automation-
             # Read from S3
             obj = s3.get_object(Bucket=s3_bucket, Key=input_key)
             df = pd.read_csv(io.BytesIO(obj['Body'].read()))
-            
-            # Process the data
             df = df.dropna()
             
             # Write back to S3
@@ -65,7 +77,8 @@ def process_device(device_name, aws_mode=False, s3_bucket='brilliant-automation-
         OUTPUT_DIR = f"../../Data/process/{device_name}_full.csv"
         
         try:
-            df = load_and_clean_data(DATA_DIR)
+            df = pd.read_csv(DATA_DIR)
+            df = df.dropna()
             df.to_csv(OUTPUT_DIR, index=True)
             logging.info(f"Successfully processed and saved data for {device_name}")
         except Exception as e:

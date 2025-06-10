@@ -65,10 +65,10 @@ class DataLoader:
         logger.info("DataLoader initialized with hourly updates")
     
     def _get_s3_key(self, device_name):
-        return f"process/{device_name}_full.csv"
+        return f"process/{device_name}_merged.csv"
     
     def _get_local_path(self, device_name):
-        return self._project_root / "Data" / "process" / f"{device_name}_full.csv"
+        return self._project_root / "Data" / "process" / f"{device_name}_merged.csv"
     
     def _read_csv_from_s3(self, device_name):
         s3_key = self._get_s3_key(device_name)

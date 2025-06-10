@@ -24,16 +24,16 @@ run_preprocessing() {
     fi
 }
 
-run_load_and_clean() {
-    echo "Running load and clean data step"
-    if "$PYTHON_PATH" "$PROJECT_ROOT/src/load_and_clean_data.py" --aws; then
-        echo "Successfully completed load and clean data step"
-        return 0
-    else
-        echo "Error in load and clean data step"
-        return 1
-    fi
-}
+# run_load_and_clean() {
+#     echo "Running load and clean data step"
+#     if "$PYTHON_PATH" "$PROJECT_ROOT/src/load_and_clean_data.py" --aws; then
+#         echo "Successfully completed load and clean data step"
+#         return 0
+#     else
+#         echo "Error in load and clean data step"
+#         return 1
+#     fi
+# }
 
 devices=(
     "1#High-Temp Fan"
@@ -58,11 +58,11 @@ else
     exit 1
 fi
 
-echo "=== Starting Load and Clean Data Step ==="
-if ! run_load_and_clean; then
-    echo "Load and clean data step failed"
-    exit 1
-fi
+# echo "=== Starting Load and Clean Data Step ==="
+# if ! run_load_and_clean; then
+#     echo "Load and clean data step failed"
+#     exit 1
+# fi
 
 # TODO: Add model training/prediction steps here
 # echo "=== Starting Model Training ==="

@@ -103,6 +103,7 @@ def read_device_files(device_name, data_dir="../Data/raw", aws_mode=False, s3_bu
         if not matched_files:
             logging.error(f"No files found for device: {device_name} in S3 bucket {s3_bucket}")
             raise FileNotFoundError(f"No files found for device: {device_name} in S3 bucket {s3_bucket}")
+        logging.info(f"Matched files for device {device_name}: {[os.path.basename(f) for f in matched_files]}")
         rating_files = []
         feature_files = []
         for f in matched_files:
@@ -133,6 +134,8 @@ def read_device_files(device_name, data_dir="../Data/raw", aws_mode=False, s3_bu
             df = pd.read_excel(io.BytesIO(obj['Body'].read()))
             rating_dfs.append(df)
         rating_df = pd.concat(rating_dfs, ignore_index=True)
+        logging.info(f"features_df Date range: {features_df['Date'].min()} to {features_df['Date'].max()}")
+        logging.info(f"rating_df Date range: {rating_df['Date'].min()} to {rating_df['Date'].max()}")
         return features_df, rating_df
     else:
         logging.info(f"Reading files from local directory: {data_dir}")
@@ -145,6 +148,7 @@ def read_device_files(device_name, data_dir="../Data/raw", aws_mode=False, s3_bu
         if not matched_files:
             logging.error(f"No files found for device: {device_name}")
             raise FileNotFoundError(f"No files found for device: {device_name}")
+        logging.info(f"Matched files for device {device_name}: {[os.path.basename(f) for f in matched_files]}")
         # Separate rating files from location files
         rating_files = []
         feature_files = []
@@ -175,6 +179,8 @@ def read_device_files(device_name, data_dir="../Data/raw", aws_mode=False, s3_bu
             df = pd.read_excel(file)
             rating_dfs.append(df)
         rating_df = pd.concat(rating_dfs, ignore_index=True)
+        logging.info(f"features_df Date range: {features_df['Date'].min()} to {features_df['Date'].max()}")
+        logging.info(f"rating_df Date range: {rating_df['Date'].min()} to {rating_df['Date'].max()}")
         return features_df, rating_df
 
 def filter_datetime_range(df, start, end):
@@ -233,6 +239,8 @@ if __name__ == "__main__":
         format="%Y-%m-%d %H:%M:%S",
         errors="coerce"
     )
+    logging.info(f"features_df datetime range: {features_df['datetime'].min()} to {features_df['datetime'].max()}")
+    logging.info(f"rating_df datetime range: {rating_df['datetime'].min()} to {rating_df['datetime'].max()}")
 
     features_df.drop(columns=["Date", "Time", "id"], inplace=True)
     rating_df.drop(columns=["Date", "Time"], inplace=True)
@@ -248,10 +256,8 @@ if __name__ == "__main__":
         columns="Metric",
         values="Rating"
     ).reset_index()
-
-    logging.info("Pivoting completed.")
-    log_dataframe_metadata(pivot_features_df, "Pivoted Sensor DataFrame")
-    log_dataframe_metadata(pivot_rating_df, "Pivoted Ratings DataFrame")
+    logging.info(f"pivot_features_df datetime range: {pivot_features_df['datetime'].min()} to {pivot_features_df['datetime'].max()}")
+    logging.info(f"pivot_rating_df datetime range: {pivot_rating_df['datetime'].min()} to {pivot_rating_df['datetime'].max()}")
 
     pivot_features_df['Temperature'] = pivot_features_df.groupby('location')['Temperature'].ffill()
 
@@ -277,6 +283,7 @@ if __name__ == "__main__":
         on="datetime",
         direction="forward"
     )
+    logging.info(f"merged_df datetime range: {merged_df['datetime'].min()} to {merged_df['datetime'].max()}")
 
     logging.info("Merging completed.")
     log_dataframe_metadata(merged_df, "Merged DataFrame")
