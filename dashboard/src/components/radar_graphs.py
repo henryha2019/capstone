@@ -24,7 +24,12 @@ def update_radar_graph(df, graph_id):
         return go.Figure()
     
     cols = RATINGS["status_cols"] if graph_id == 1 else RATINGS["metric_cols"]
-    means = df[cols].mean()
+    available_cols = [col for col in cols if col in df.columns]
+    if not available_cols:
+        fig = go.Figure()
+        fig.add_annotation(text="No metrics available", showarrow=False)
+        return fig
+    means = df[available_cols].mean()
     labels = [
         f"<span style='text-align:center; display:block'>{col.replace('_', ' ').title()}<br>{v:.1f}</span>"
         for col, v in zip(means.index, means.values)

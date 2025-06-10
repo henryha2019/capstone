@@ -19,6 +19,7 @@ signal_graph_env = create_signal_graph("signal-graph-env")
 signal_graph_env_fft = create_signal_graph("signal-graph-env-fft")
 
 def update_signal_graphs(df):
-    if df.empty or FEATURES['vibration_velocity_z'] not in df.columns:
+    required_col = FEATURES['vibration_velocity_z']
+    if df.empty or required_col not in df.columns:
         return [go.Figure()] * STANDARD_NUMBER_OF_PLOTS
     return SignalVisualizer(df).generate()

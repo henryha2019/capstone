@@ -57,4 +57,4 @@ if __name__ == "__main__":
 
     # Uncomment to run HMR for development
     # logger.info("Starting Dash server...")
-    # app.run_server(debug=True, host='0.0.0.0', port=8050)
+    # app.server.run(debug=True, host='0.0.0.0', port=8050)

@@ -23,6 +23,8 @@ def create_overlay_figure(df, y_columns, y_label):
     is_rating_graph = "Rating Health" in y_label
     
     for col in y_columns:
+        if col not in df.columns:
+            continue  # Skip columns that are not present
         for loc in df["location"].unique():
             subset = df[df["location"] == loc]
             

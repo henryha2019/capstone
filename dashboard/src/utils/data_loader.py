@@ -75,7 +75,10 @@ class DataLoader:
         logger.info(f"Reading {s3_key} from S3 bucket {self.s3_bucket} into memory...")
         s3 = boto3.client('s3')
         obj = s3.get_object(Bucket=self.s3_bucket, Key=s3_key)
-        return pd.read_csv(io.BytesIO(obj['Body'].read()))
+        df = pd.read_csv(io.BytesIO(obj['Body'].read()))
+        if device_name == "1#High-Temp Fan":
+            df["Device"] = df["Device"].str.replace("1#High-temperature Fan", "1#High-Temp Fan")
+        return df
     
     def update_all_data(self):
         """Update data for all devices"""
@@ -93,6 +96,8 @@ class DataLoader:
                 df = self._read_csv_from_s3(device_name)
             else:
                 df = pd.read_csv(self._get_local_path(device_name))
+                if device_name == "1#High-Temp Fan":
+                    df["Device"] = df["Device"].str.replace("1#High-temperature Fan", "1#High-Temp Fan")
             
             df = df.rename(columns={"datetime": "timestamp"})
             df["timestamp"] = pd.to_datetime(df["timestamp"])
@@ -121,10 +126,16 @@ data_loader = DataLoader()
 def load_data(device_name="8#Belt Conveyer", start_time=None, end_time=None):
     """Loads data for a specific device then filters and resample by user selected time range"""
     df = data_loader.get_data(device_name)
-        
+    logger.info(f"[load_data] Initial DF shape: {df.shape}")
+    logger.info(f"[load_data] Columns: {list(df.columns)}")
+    logger.info(f"[load_data] Unique Device values: {df['Device'].unique()}")
+    logger.info(f"[load_data] Unique location values: {df['location'].unique()}")
+    logger.info(f"[load_data] Sample data:\n{df.head(3)}")
+    
     if start_time and end_time and not df.empty:
         df = df[(df["timestamp"] >= pd.to_datetime(start_time)) &
                 (df["timestamp"] <= pd.to_datetime(end_time))]
+        logger.info(f"[load_data] After date filter DF shape: {df.shape}")
 
         delta = pd.to_datetime(end_time) - pd.to_datetime(start_time)
         if delta <= pd.Timedelta(hours=1):
@@ -142,7 +153,10 @@ def load_data(device_name="8#Belt Conveyer", start_time=None, end_time=None):
                 .mean()
                 .reset_index()
             )
+            logger.info(f"[load_data] After resample DF shape: {df.shape}")
 
+    logger.info(f"[load_data] Final DF shape: {df.shape}")
+    logger.info(f"[load_data] Final sample data:\n{df.head(3)}")
     return df
 
 def get_unique_locations(device_name="8#Belt Conveyer"):
