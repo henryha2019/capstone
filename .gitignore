@@ -12,6 +12,10 @@ docs/.RData
 # Project data folder
 Data/**
 
+# …except keep the “result” directory
+!Data/result/
+!Data/result/**
+
 notebook/eda_conveyer_belt.nbconvert.ipynb
 .idea/
 cv_metrics.csv
