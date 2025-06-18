@@ -1,25 +1,36 @@
+#!/usr/bin/env python3
+# model.py
+
+import os
+import io
+import argparse
+from pathlib import Path
+
 import pandas as pd
 import numpy as np
-import argparse
 import boto3
-import io
-import os
+import joblib
+import matplotlib.pyplot as plt
+
+from sklearn.base import clone
 from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
-from sklearn.preprocessing import StandardScaler, OneHotEncoder, PolynomialFeatures
+from sklearn.preprocessing import StandardScaler, PolynomialFeatures
 from sklearn.dummy import DummyRegressor
 from sklearn.linear_model import Ridge
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.multioutput import MultiOutputRegressor
-from sklearn.model_selection import cross_validate
-from sklearn.model_selection import TimeSeriesSplit
+from sklearn.svm import SVR
+from sklearn.tree import DecisionTreeRegressor
+from xgboost import XGBRegressor
+from sklearn.model_selection import cross_validate, TimeSeriesSplit, RandomizedSearchCV
 from sklearn.metrics import make_scorer, mean_squared_error, mean_absolute_error, r2_score, explained_variance_score
+from scipy.stats import loguniform, randint
 
 
 def evaluate_cv(cv_results):
     """
     Summarize cross-validation results into a DataFrame.
-    Assumes negative MSE/MAE are returned, so we convert them back.
+    Assumes negative MSE/MAE in cv_results, so we convert them back.
     """
     metrics = {
         'MSE': -cv_results['test_neg_mean_squared_error'],
@@ -33,85 +44,108 @@ def evaluate_cv(cv_results):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Train and evaluate machine learning models for device data.")
-    parser.add_argument("--model", choices=['Baseline', 'Ridge', 'PolyRidgeDegree2', 'PolyRidgeDegree5', 'RandomForest', 'all'], 
-                      default='all', help="Model to train (default: all)")
-    parser.add_argument("--aws", action="store_true", help="Read/write data from/to S3 bucket")
-    parser.add_argument("--device", default="8#Belt Conveyer", help="Device name (default: 8#Belt Conveyer)")
+    parser = argparse.ArgumentParser(
+        description="Train & evaluate ML models on joined DSP+rating features"
+    )
+    parser.add_argument(
+        "--model",
+        choices=['Baseline', 'Ridge', 'PolyRidgeDegree2', 'RandomForest', 'XGBoost', 'SVR', 'RuleTree', 'all'],
+        default='all',
+        help="Which model to train (default: all)"
+    )
+    parser.add_argument(
+        "--tune",
+        action="store_true",
+        help="Perform randomized hyperparameter tuning"
+    )
+    parser.add_argument(
+        "--aws",
+        action="store_true",
+        help="Read/write data from S3 instead of local disk"
+    )
+    parser.add_argument(
+        "--device",
+        default="8#Belt Conveyer",
+        help="Device name (affects file paths/key names)"
+    )
     args = parser.parse_args()
 
-    # Load and clean data
+    # Setup output directory
+    result_dir = Path('Data') / 'result'
+    result_dir.mkdir(parents=True, exist_ok=True)
+
+    # Load full_features.csv
     if args.aws:
-        s3 = boto3.client('s3')
         bucket = 'brilliant-automation-capstone'
-        key = f"process/{args.device}_merged.csv"
+        key    = f"process/{args.device}_full_features.csv"
         try:
-            obj = s3.get_object(Bucket=bucket, Key=key)
-            df = pd.read_csv(io.BytesIO(obj['Body'].read()))
+            obj = boto3.client('s3').get_object(Bucket=bucket, Key=key)
+            df  = pd.read_csv(io.BytesIO(obj['Body'].read()), parse_dates=['datetime'])
         except Exception as e:
-            print(f"Error reading from S3: {e}")
+            print("S3 read error:", e)
             return
     else:
-        try:
-            df = pd.read_csv(f'Data/process/{args.device}_merged.csv')
-        except FileNotFoundError:
-            print(f"Error: Could not find data file for device {args.device}")
+        path = Path('Data') / 'process' / f"{args.device}_full_features.csv"
+        if not path.exists():
+            print("File not found:", path)
             return
+        df = pd.read_csv(path, parse_dates=['datetime'])
 
-    df = df.drop(columns=['Device'], errors='ignore').dropna()
-    # Using a sample dataset comment line below for full data
-    # df = df[:100000]
+    # Drop unused columns and missing data
+    df = df.drop(columns=['filepath', 'sensor_id', 'bucket_id', 'bucket_end'], errors='ignore').dropna()
 
-    # Preprocessing: datetime → timestamp, location → one-hot
-    df['datetime'] = pd.to_datetime(df['datetime'])
+    # Feature engineering
     df['datetime_ts'] = df['datetime'].astype('int64') // 10**9
-    df = pd.get_dummies(df, columns=['location'], prefix='loc')
+    df = pd.get_dummies(df, columns=['location', 'wave_code'], prefix=['loc', 'wave'])
 
-    # Features and targets
-    numeric_features = [
-        'datetime_ts',
-        'High-Frequency Acceleration',
-        'Low-Frequency Acceleration Z',
-        'Temperature',
-        'Vibration Velocity Z'
-    ]
-    categorical_features = [c for c in df.columns if c.startswith('loc_')]
-    X = df[numeric_features + categorical_features]
-    y = df.drop(columns=numeric_features + categorical_features + ['datetime'])
+    # Prepare X and multi-output y
+    rating_cols = [c for c in df.columns if c.endswith('_rating')]
+    X = df.drop(columns=rating_cols + ['datetime'])
+    y = df[rating_cols]
 
-    # Base preprocessors
-    numeric_transformer = Pipeline([('scaler', StandardScaler())])
-    categorical_transformer = Pipeline([('encoder', OneHotEncoder(handle_unknown='ignore'))])
+    # Identify numeric vs categorical features
+    cat_prefixes = ('loc_', 'wave_')
+    categorical_features = [c for c in X.columns if c.startswith(cat_prefixes)]
+    numeric_features     = [c for c in X.columns if c not in categorical_features]
 
-    # Polynomial preprocessors
-    numeric_poly2 = Pipeline([
-        ('scaler', StandardScaler()),
-        ('poly', PolynomialFeatures(degree=2, include_bias=False))
-    ])
-    numeric_poly5 = Pipeline([
-        ('scaler', StandardScaler()),
-        ('poly', PolynomialFeatures(degree=5, include_bias=False))
-    ])
-
-    # ColumnTransformers for each
+    # Define prototype preprocessors
+    scaler = StandardScaler()
+    poly2  = PolynomialFeatures(degree=2, include_bias=False)
     preprocessors = {
-        'Baseline': ColumnTransformer([('num', numeric_transformer, numeric_features), ('cat', categorical_transformer, categorical_features)]),
-        'Ridge': ColumnTransformer([('num', numeric_transformer, numeric_features), ('cat', categorical_transformer, categorical_features)]),
-        'PolyRidgeDegree2': ColumnTransformer([('num', numeric_poly2, numeric_features), ('cat', categorical_transformer, categorical_features)]),
-        'PolyRidgeDegree5': ColumnTransformer([('num', numeric_poly5, numeric_features), ('cat', categorical_transformer, categorical_features)]),
-        'RandomForest': ColumnTransformer([('num', numeric_transformer, numeric_features), ('cat', categorical_transformer, categorical_features)])
+        'Baseline': ColumnTransformer([('num', scaler, numeric_features)], remainder='passthrough'),
+        'Ridge': ColumnTransformer([('num', scaler, numeric_features)], remainder='passthrough'),
+        'PolyRidgeDegree2': ColumnTransformer([('num', Pipeline([('scale', scaler), ('poly', poly2)]), numeric_features)], remainder='passthrough'),
+        'RandomForest': ColumnTransformer([('num', scaler, numeric_features)], remainder='passthrough'),
+        'XGBoost': ColumnTransformer([('num', scaler, numeric_features)], remainder='passthrough'),
+        'SVR': ColumnTransformer([('num', scaler, numeric_features)], remainder='passthrough'),
+        'RuleTree': ColumnTransformer([('num', scaler, numeric_features)], remainder='passthrough')
     }
 
+    # Define prototype models
     models = {
         'Baseline': DummyRegressor(strategy='mean'),
-        'Ridge': Ridge(alpha=1.0),
-        'PolyRidgeDegree2': Ridge(alpha=1.0),
-        'PolyRidgeDegree5': Ridge(alpha=1.0),
-        'RandomForest': RandomForestRegressor(n_estimators=100, random_state=42)
+        'Ridge': Ridge(),
+        'PolyRidgeDegree2': Ridge(),
+        'RandomForest': RandomForestRegressor(random_state=42),
+        'XGBoost': XGBRegressor(random_state=42, objective='reg:squarederror'),
+        'SVR': SVR(),
+        'RuleTree': DecisionTreeRegressor(max_depth=1, random_state=42)
     }
 
-    selected_models = models if args.model == 'all' else {args.model: models[args.model]}
+    # Hyperparameter distributions for tuning
+    param_distributions = {
+        'Ridge': {'reg__alpha': loguniform(1e-3, 1e3)},
+        'PolyRidgeDegree2': {'reg__alpha': loguniform(1e-3, 1e3)},
+        'RandomForest': {'reg__n_estimators': randint(50, 200), 'reg__max_depth': randint(3, 20)},
+        'XGBoost': {'reg__n_estimators': randint(50, 200), 'reg__max_depth': randint(3, 20), 'reg__learning_rate': loguniform(1e-3, 1e-1)},
+        'SVR': {'reg__C': loguniform(1e-2, 1e2), 'reg__gamma': ['scale', 'auto']},
+        'RuleTree': {'reg__max_depth': randint(1, 5)}
+    }
 
+    # Select which models to run
+    selected = models if args.model == 'all' else {args.model: models[args.model]}
+
+    # Define scoring metrics
     scoring = {
         'neg_mean_squared_error': make_scorer(mean_squared_error, greater_is_better=False),
         'neg_mean_absolute_error': make_scorer(mean_absolute_error, greater_is_better=False),
@@ -119,36 +153,92 @@ def main():
         'explained_variance': make_scorer(explained_variance_score)
     }
 
-    results_list = []
-    for model_name, model in selected_models.items():
-        preprocessor = preprocessors[model_name]
-        for target_col in y.columns:
-            pipe = Pipeline([('pre', preprocessor), ('reg', model)])
-            tscv = TimeSeriesSplit(n_splits=5)
-            cv_res = cross_validate(pipe, X, y[target_col], cv=tscv, scoring=scoring, n_jobs=-1)
-            summary = evaluate_cv(cv_res)
-            summary.insert(0, 'Target', target_col)
-            summary.insert(0, 'Model', model_name)
-            results_list.append(summary)
+    # Cross-validate and optionally tune
+    results = []
+    tscv    = TimeSeriesSplit(n_splits=5)
+    best_estimators = {}
 
-    cv_df = pd.concat(results_list, ignore_index=True)
-    print("Cross-Validation Metrics (averaged):")
+    for name, prototype in selected.items():
+        for target in y.columns:
+            # Clone fresh preprocessor and model
+            pre = clone(preprocessors[name])
+            mdl = clone(models[name])
+            pipe = Pipeline([('pre', pre), ('reg', mdl)])
+
+            # Hyperparameter tuning if requested
+            if args.tune and name in param_distributions:
+                search = RandomizedSearchCV(
+                    pipe,
+                    param_distributions[name],
+                    n_iter=20,
+                    cv=tscv,
+                    scoring='r2',
+                    n_jobs=-1
+                )
+                search.fit(X, y[target])
+                best_model = search.best_estimator_
+            else:
+                best_model = pipe.fit(X, y[target])
+
+            best_estimators[(name, target)] = best_model
+
+            # Evaluate with CV
+            cv_res = cross_validate(best_model, X, y[target], cv=tscv, scoring=scoring, n_jobs=-1)
+            summary = evaluate_cv(cv_res)
+            summary.insert(0, 'Target', target)
+            summary.insert(0, 'Model', name)
+            results.append(summary)
+
+    # Aggregate and display CV results
+    cv_df = pd.concat(results, ignore_index=True)
+    print("\nCross-Validation Metrics (averaged):")
     print(cv_df.to_string(index=False))
 
-    # Save results
+    # Save CV results locally to Data/result
+    metrics_fn = result_dir / f"{args.device}_{args.model}_cv_metrics.csv"
+    cv_df.to_csv(metrics_fn, index=False)
+    print(f"Saved CV results to {metrics_fn}")
+
+    # Save to S3 if requested
     if args.aws:
-        s3 = boto3.client('s3')
         bucket = 'brilliant-automation-capstone'
-        key = f"results/{args.device}_{args.model}_cv_metrics.csv"
-        csv_buffer = io.StringIO()
-        cv_df.to_csv(csv_buffer, index=False)
-        s3.put_object(Bucket=bucket, Key=key, Body=csv_buffer.getvalue())
-        print(f"Results saved to s3://{bucket}/{key}")
-    else:
-        output_file = f'{args.device}_{args.model}_cv_metrics.csv'
-        cv_df.to_csv(output_file, index=False)
-        print(f"Results saved to {output_file}")
+        out_key = f"results/{args.device}_{args.model}_cv_metrics.csv"
+        buf = io.StringIO()
+        cv_df.to_csv(buf, index=False)
+        boto3.client('s3').put_object(Bucket=bucket, Key=out_key, Body=buf.getvalue())
+        print(f"Also saved CV results to s3://{bucket}/{out_key}")
 
+    # Determine the best model per target by max R² (excluding Baseline)
+    no_baseline = cv_df[cv_df['Model'] != 'Baseline']
+    best_per_target = (
+        no_baseline.loc[no_baseline.groupby('Target')['R2'].idxmax()]
+             .set_index('Target')['Model']
+             .to_dict()
+    )
 
-if __name__ == '__main__':
+    # Persist only the winners with plots to Data/result
+    for (name, target), model in best_estimators.items():
+        if best_per_target.get(target) != name:
+            continue
+        # Save the model
+        model_fn = result_dir / f"{args.device}_{name}_{target}_model.pkl"
+        joblib.dump(model, model_fn)
+        print(f"Saved best model for {target}: {model_fn}")
+
+        # Plot actual vs. predicted
+        y_true = y[target].values
+        y_pred = model.predict(X)
+        plt.figure()
+        plt.plot(y_true, label='Actual')
+        plt.plot(y_pred, label='Predicted')
+        plt.title(f"Best: {name} - {target}")
+        plt.xlabel('Sample index')
+        plt.ylabel(target)
+        plt.legend()
+        plot_fn = result_dir / f"{args.device}_{name}_{target}_plot.png"
+        plt.savefig(plot_fn)
+        plt.close()
+        print(f"Saved plot for {target}: {plot_fn}")
+
+if __name__ == "__main__":
     main()
