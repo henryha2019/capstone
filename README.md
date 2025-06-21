@@ -20,6 +20,39 @@ conda activate brilliant-auto-env
 
 ---
 
+## Makefile Usage
+
+We provide a `Makefile` at the project root to automate the modeling pipeline:
+
+```bash
+make all          # download → preprocess → features → train & tune (default device)
+make download     # only download & unzip raw data
+make preprocess   # only run preprocessing
+make features     # only run feature extraction
+make train        # only run training & tuning
+make clean        # remove caches, logs, and archives
+```
+
+▶️ Specifying a Device
+By default, Makefile uses:
+```bash
+DEVICE = 8#Belt Conveyer
+```
+To run for a different device, pass DEVICE on the command line.
+
+```
+make preprocess DEVICE="8#Belt Conveyer"
+make preprocess DEVICE="High-Temp Fan#1"
+make preprocess DEVICE="Tube Mill"
+```
+Under the hood, each target invokes the corresponding script, e.g.:
+```bash
+python model/src/preprocess.py       --device "$(DEVICE)"
+python model/src/feature_engineer.py --device "$(DEVICE)"
+python model/src/model.py           --model all --tune --device "$(DEVICE)"
+```
+This lets you flexibly switch which equipment you run the pipeline for without editing any code.
+
 ## How to Generate the Proposal Report
 
 Follow these steps to generate the proposal report as a PDF:
