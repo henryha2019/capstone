@@ -7,6 +7,8 @@ import pandas as pd
 import numpy as np
 import joblib
 import matplotlib.pyplot as plt
+import boto3
+import io
 from sklearn.base import clone
 from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
@@ -39,21 +41,29 @@ def evaluate_cv(cv_results):
     return df.mean().to_frame().T
 
 
-def save_results(base_dir, device, best_models):
+def save_results(base_dir, device, best_models, aws_mode=False):
     """
     Saves the best models, cross-validation metrics, and prediction plots for each target feature.
-    Stores results in 'model/results'.
+    Stores results in 'model/results' locally or S3 bucket when aws_mode=True.
     """
-    # Define the results directory relative to the base directory
-    results_dir = Path(base_dir) / "results"
-    models_dir = results_dir / "models" / device
-    metrics_dir = results_dir / "metrics" / device
-    plots_dir = results_dir / "plots" / device
+    s3_bucket = 'brilliant-automation-capstone'
+    
+    if aws_mode:
+        s3 = boto3.client('s3')
+        models_prefix = f"results/models/{device}/"
+        metrics_prefix = f"results/metrics/{device}/"
+        plots_prefix = f"results/plots/{device}/"
+    else:
+        # Define the results directory relative to the base directory
+        results_dir = Path(base_dir) / "results"
+        models_dir = results_dir / "models" / device
+        metrics_dir = results_dir / "metrics" / device
+        plots_dir = results_dir / "plots" / device
 
-    # Create directories if they do not exist
-    models_dir.mkdir(parents=True, exist_ok=True)
-    metrics_dir.mkdir(parents=True, exist_ok=True)
-    plots_dir.mkdir(parents=True, exist_ok=True)
+        # Create directories if they do not exist
+        models_dir.mkdir(parents=True, exist_ok=True)
+        metrics_dir.mkdir(parents=True, exist_ok=True)
+        plots_dir.mkdir(parents=True, exist_ok=True)
 
     # Collect metrics with the associated best model name
     metrics_list = []
@@ -63,9 +73,17 @@ def save_results(base_dir, device, best_models):
         metrics_list.append(metrics)
 
         # Save the model
-        model_path = models_dir / f"{target}_best_model.pkl"
-        joblib.dump(model, model_path)
-        print(f"Saved best model for '{target}' to {model_path}")
+        if aws_mode:
+            model_buffer = io.BytesIO()
+            joblib.dump(model, model_buffer)
+            model_buffer.seek(0)
+            s3_key = f"{models_prefix}{target}_best_model.pkl"
+            s3.put_object(Bucket=s3_bucket, Key=s3_key, Body=model_buffer.getvalue())
+            print(f"Saved best model for '{target}' to s3://{s3_bucket}/{s3_key}")
+        else:
+            model_path = models_dir / f"{target}_best_model.pkl"
+            joblib.dump(model, model_path)
+            print(f"Saved best model for '{target}' to {model_path}")
 
         # Generate and save prediction plot
         plt.figure()
@@ -75,16 +93,34 @@ def save_results(base_dir, device, best_models):
         plt.xlabel('Sample Index')
         plt.ylabel(target)
         plt.legend()
-        plot_path = plots_dir / f"{target}_predictions.png"
-        plt.savefig(plot_path)
+        
+        if aws_mode:
+            plot_buffer = io.BytesIO()
+            plt.savefig(plot_buffer, format='png')
+            plot_buffer.seek(0)
+            s3_key = f"{plots_prefix}{target}_predictions.png"
+            s3.put_object(Bucket=s3_bucket, Key=s3_key, Body=plot_buffer.getvalue())
+            print(f"Saved prediction plot for '{target}' to s3://{s3_bucket}/{s3_key}")
+        else:
+            plot_path = plots_dir / f"{target}_predictions.png"
+            plt.savefig(plot_path)
+            print(f"Saved prediction plot for '{target}' to {plot_path}")
+        
         plt.close()
-        print(f"Saved prediction plot for '{target}' to {plot_path}")
 
     # Save all metrics to a single CSV file
-    metrics_file = metrics_dir / "cv_metrics.csv"
     combined_metrics = pd.concat(metrics_list)
-    combined_metrics.to_csv(metrics_file, index=False)
-    print(f"Saved cross-validation metrics to {metrics_file}")
+    
+    if aws_mode:
+        csv_buffer = io.StringIO()
+        combined_metrics.to_csv(csv_buffer, index=False)
+        s3_key = f"{metrics_prefix}cv_metrics.csv"
+        s3.put_object(Bucket=s3_bucket, Key=s3_key, Body=csv_buffer.getvalue())
+        print(f"Saved cross-validation metrics to s3://{s3_bucket}/{s3_key}")
+    else:
+        metrics_file = metrics_dir / "cv_metrics.csv"
+        combined_metrics.to_csv(metrics_file, index=False)
+        print(f"Saved cross-validation metrics to {metrics_file}")
 
 
 def main():
@@ -105,19 +141,48 @@ def main():
         default="8_Belt_Conveyer",
         help="Device name (used for file paths and output organization)"
     )
+    parser.add_argument(
+        "--aws",
+        action="store_true",
+        help="Read data from S3 bucket and save results to S3 instead of local directories"
+    )
     args = parser.parse_args()
 
     result_dir = Path(__file__).resolve().parent.parent
+    s3_bucket = 'brilliant-automation-capstone'
 
-    # Load dataset (input data stays in the data directory)
-    data_path = Path('data') / 'processed' / f"{args.device}_full_features.csv"
-    if not data_path.exists():
-        print(f"File not found: {data_path}")
-        return
-    df = pd.read_csv(data_path, parse_dates=['datetime'])
+    # Load dataset from local or S3
+    if args.aws:
+        print(f"Loading data from S3 bucket: {s3_bucket}")
+        s3 = boto3.client('s3')
+        s3_key = f"processed/{args.device}_full_features.csv"
+        try:
+            obj = s3.get_object(Bucket=s3_bucket, Key=s3_key)
+            df = pd.read_csv(io.BytesIO(obj['Body'].read()), parse_dates=['datetime'])
+            print(f"Loaded data from s3://{s3_bucket}/{s3_key}")
+        except Exception as e:
+            print(f"Failed to load data from S3: {e}")
+            return
+    else:
+        # Load dataset (input data stays in the data directory)
+        data_path = Path('data') / 'processed' / f"{args.device}_full_features.csv"
+        if not data_path.exists():
+            print(f"File not found: {data_path}")
+            return
+        df = pd.read_csv(data_path, parse_dates=['datetime'])
+        print(f"Loaded data from {data_path}")
 
+    # Debug: Print column info
+    print(f"Dataset shape: {df.shape}")
+    print(f"Columns: {list(df.columns)}")
+    
     # Drop unused columns and handle missing data
-    df = df.drop(columns=['filepath', 'sensor_id', 'bucket_id', 'bucket_end'], errors='ignore').dropna()
+    columns_to_drop = ['filepath', 'sensor_id', 'bucket_id', 'bucket_end', 's3_key']
+    existing_columns_to_drop = [col for col in columns_to_drop if col in df.columns]
+    print(f"Dropping columns: {existing_columns_to_drop}")
+    
+    df = df.drop(columns=existing_columns_to_drop).dropna()
+    print(f"Shape after dropping columns and NaN: {df.shape}")
 
     # Optional: Subsample large datasets
     if len(df) > 100_000:
@@ -130,8 +195,30 @@ def main():
 
     # Separate features (X) and target values (y)
     rating_cols = [col for col in df.columns if col.endswith('_rating')]
+    print(f"Rating columns found: {rating_cols}")
+    
     X = df.drop(columns=rating_cols + ['datetime'])
     y = df[rating_cols]
+    
+    # Debug: Print feature info
+    print(f"Features shape: {X.shape}")
+    print(f"Targets shape: {y.shape}")
+    print(f"Feature columns: {list(X.columns)}")
+    
+    # Check for any non-numeric columns in X
+    non_numeric_cols = X.select_dtypes(exclude=[np.number]).columns.tolist()
+    if non_numeric_cols:
+        print(f"WARNING: Non-numeric columns found in features: {non_numeric_cols}")
+        print("Sample values from non-numeric columns:")
+        for col in non_numeric_cols[:3]:  # Show first 3 non-numeric columns
+            print(f"  {col}: {X[col].iloc[:5].tolist()}")
+        
+        # Try to drop problematic string columns
+        print("Attempting to drop string columns...")
+        X = X.select_dtypes(include=[np.number])
+        print(f"Features shape after dropping non-numeric columns: {X.shape}")
+    
+    print(f"Final feature columns: {list(X.columns)}")
 
     # Dynamically determine parallelism
     num_cores = os.cpu_count()
@@ -224,7 +311,7 @@ def main():
         best_models[target] = (best_metrics, best_model, (y_true, y_pred))
 
     # Save the results
-    save_results(result_dir, args.device, best_models)
+    save_results(result_dir, args.device, best_models, aws_mode=args.aws)
 
 
 if __name__ == "__main__":

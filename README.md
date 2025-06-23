@@ -138,8 +138,6 @@ python model/src/preprocess.py --device "<device_name>" [--data_dir <data_direct
 
 ## **6. How to Run the Dashboard**
 
-The dashboard currently uses sample data in `data/sample_belt_conveyer.csv` and does not reflect results from our models.
-
 ```bash
 cd dashboard/src
 python -m app
@@ -149,72 +147,237 @@ Go to `http://127.0.0.1:8050/dashboard/` to view the dashboard.
 
 ---
 
-## **7. AWS Deployment**
+## **7. AWS Data Pipeline**
 
-### Setting up Cron Jobs on AWS EC2
+### Architecture Overview
 
-The data pipeline can be automated using cron jobs on AWS EC2. Here's how to set it up:
+Our AWS data pipeline provides an end-to-end solution for automated equipment health monitoring, leveraging cloud services for scalable data processing and machine learning model deployment.
 
-1. SSH into your EC2 instance:
+#### **Technical Architecture**
+
+![AWS Data Pipeline Architecture](docs/images/final_report_figures/AWS_Data_Pipeline.png)
+
+**Key Components:**
+- **Storage Layer**: AWS S3 for centralized data repository
+- **Processing Layer**: AWS EC2 for data processing, feature engineering, and ML training
+- **Application Layer**: Flask dashboard and automated scheduling
+
+#### **AWS Services Used**
+
+| Service | Purpose | Configuration |
+|---------|---------|---------------|
+| **Amazon S3** | Centralized data storage | Bucket: `brilliant-automation-capstone` |
+| **Amazon EC2** | Compute infrastructure | Instance for processing and dashboard hosting |
+| **AWS IAM** | Access management | Secure S3 and EC2 permissions |
+
+### **Data Flow Architecture**
+
+#### **S3 Bucket Structure**
+```
+brilliant-automation-capstone/
+├── raw/                    # Raw sensor data (.xlsx files)
+├── voltage/               # Compressed voltage data (.7z files)
+│   ├── 20250401-8#Belt Conveyer/    # Extracted JSON files
+│   ├── 20250402-8#Belt Conveyer/    
+│   └── ...
+├── processed/             # Processed datasets (.csv files)
+│   ├── 8#Belt Conveyer_merged.csv
+│   ├── 8#Belt Conveyer_full_features.csv
+│   └── ...
+└── results/               # ML results and artifacts
+    ├── models/            # Trained models (.pkl files)
+    ├── metrics/           # Performance metrics (.csv files)
+    └── plots/             # Prediction visualizations (.png files)
+```
+
+#### **Pipeline Stages**
+
+1. **Data Ingestion**: Raw sensor data uploaded to S3 `raw/` folder
+2. **Preprocessing**: Sensor and rating data merged and synchronized
+3. **Feature Engineering**: DSP metrics extracted from voltage data
+4. **Model Training**: Multiple ML models trained with hyperparameter tuning
+5. **Results Storage**: Models, metrics, and plots saved to S3 `results/` folder
+
+### **Complete Runbook**
+
+#### **Prerequisites**
+
+1. **AWS Account Setup**
+   - Valid AWS account with appropriate permissions
+   - Obtain the required credentials from Brilliant Automation
+   - AWS CLI configured with credentials
+
+#### **Initial Setup**
+
+##### **1. AWS Console Access**
+
+1. **Access AWS Console**
+   - Navigate to: [https://073680586744.signin.aws.amazon.com/console](https://073680586744.signin.aws.amazon.com/console)
+   - Obtain username and password from Brilliant Automation
+   - Login to access the AWS management console
+
+2. **Obtain EC2 Instance Information**
+   - Navigate to EC2 service in the AWS Console
+   - Find the running instance and note the public IP address
+   - Obtain the `ec2-access-key.pem` file from Brilliant Automation
+
+3. **Access S3 Bucket**
+   - Navigate to S3 service in the AWS Console
+   - Search for and select the `brilliant-automation-capstone` bucket
+   - Explore the folder structure:
+     - `raw/` - Raw sensor data (.xlsx files)
+     - `voltage/` - Compressed voltage data (.7z files) and extracted JSON files
+     - `processed/` - Processed datasets (.csv files)
+     - `results/` - ML results (models, metrics, plots)
+   - Use the bucket for uploading new data or downloading results
+
+##### **2. EC2 Instance Login**
+
+```bash
+# Set correct permissions for the key file
+chmod 400 ~/Downloads/ec2-access-key.pem
+
+# SSH into the EC2 instance
+ssh -i ~/Downloads/ec2-access-key.pem ubuntu@<ip_address>
+
+# Replace <ip_address> with the actual IP address from AWS Console
+# Example: ssh -i ~/Downloads/ec2-access-key.pem ubuntu@54.175.183.157
+```
+
+**Note**: Obtain the `ec2-access-key.pem` file and IP address from Brilliant Automation team.
+
+##### **3. EC2 Project Setup**
+
+**Note**: The capstone project folder is already located at `/home/jupyter-ubuntu/capstone` on the EC2 instance.
+
+1. **GitHub Access Setup**
    ```bash
-   ssh -i your-key.pem ubuntu@your-ec2-ip
-   ```
-
-2. Set up the cron job:
-   ```bash
-   crontab -e
-   ```
-
-3. Add the following line to run the pipeline every hour (replace paths with your actual paths):
-   ```bash
-   # Run pipeline at minute 0 of every hour
-   0 * * * * PATH=/home/ubuntu/miniconda3/bin:/home/ubuntu/miniconda3/condabin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin /bin/bash -c '/home/jupyter-ubuntu/capstone/model/scripts/run_pipeline.sh >> /home/jupyter-ubuntu/capstone/model/scripts/logs/pipeline_$(date +\%Y\%m\%d_\%H\%M\%S).log 2>&1'
-   ```
-
-    This cron job:
-    - Runs at minute 0 of every hour
-    - Sets the necessary PATH environment variables
-    - Executes the pipeline script
-    - Logs output to timestamped files in the logs directory
-
-4. Verify the cron job:
-   ```bash
-   crontab -l
-   ```
-
-5. Check cron service status:
-   ```bash
-   sudo systemctl status cron
-   ```
-
-6. Monitor the logs:
-   ```bash
-   # View all log files
-   ls -l /home/jupyter-ubuntu/capstone/model/scripts/logs/
+   # Navigate to the project directory
+   cd /home/jupyter-ubuntu/capstone
    
-   # View the latest log
-   tail -f /home/jupyter-ubuntu/capstone/model/scripts/logs/pipeline_*.log
+   # Generate SSH key pair for GitHub access
+   ssh-keygen -t ed25519 -C "your_email@example.com"
+   # Press Enter to accept default file location
+   # Set a passphrase (optional but recommended)
+   
+   # Display the public key
+   cat ~/.ssh/id_ed25519.pub
    ```
 
-If the cron job isn't working as expected:
+2. **Add SSH Key to GitHub Account**
+   - Copy the output of the `cat ~/.ssh/id_ed25519.pub` command
+   - Go to [GitHub SSH Settings](https://github.com/settings/keys)
+   - Click "New SSH key"
+   - Paste the public key and give it a descriptive title
+   - Click "Add SSH key"
 
-1. Check cron logs:
+3. **Configure Git and Test Access**
    ```bash
-   sudo grep CRON /var/log/syslog
+   # Configure git (replace with your details)
+   git config --global user.name "Your Name"
+   git config --global user.email "your_email@example.com"
+   
+   # Test SSH connection to GitHub
+   ssh -T git@github.com
+   
+   # Update remote URL to use SSH (if needed)
+   git remote set-url origin git@github.com:Brilliant-Automation/capstone.git
+   
+   # Verify access by pulling latest changes
+   git pull origin main
    ```
 
-2. Verify script permissions:
+4. **Environment Setup**
    ```bash
-   chmod +x /home/jupyter-ubuntu/capstone/model/scripts/run_pipeline.sh
-   ```
+   # Create conda environment (if not already created)
+   conda env create -f environment.yml
+   conda activate brilliant-auto-env
 
-3. Ensure logs directory exists:
+**Note**: Ensure you have the necessary permissions to access the [Brilliant-Automation/capstone](https://github.com/Brilliant-Automation/capstone) repository.
+
+##### **4. EC2 JupyterHub Setup**
+
+Access JupyterHub on browser:
+- **URL**: http://<ip_address> (e.g., [http://54.175.183.157](http://54.175.183.157))
+- **Username**: `ubuntu`
+- **Password**: Obtain from Brilliant Automation team
+
+**Note**: The JupyterHub interface provides direct access to the project environment and allows you to run notebooks, edit code, and manage files through a web browser.
+
+
+#### **Pipeline Execution**
+
+##### **Manual Execution**
+
+1. **Run Complete Pipeline**
    ```bash
-   mkdir -p /home/jupyter-ubuntu/capstone/model/scripts/logs
-   chmod 755 /home/jupyter-ubuntu/capstone/model/scripts/logs
+   # Make script executable
+   chmod +x model/scripts/run_pipeline.sh
+   
+   # Execute full pipeline
+   ./model/scripts/run_pipeline.sh
    ```
 
-4. Common issues:
-   - "Python not found in PATH": Make sure the PATH in the crontab entry includes your Python installation
-   - "No MTA installed": This is normal and can be ignored if logs are being written to files
-   - Permission denied: Check file and directory permissions
+2. **Individual Pipeline Steps**
+   ```bash
+   # Step 1: Preprocessing (all devices)
+   python model/src/preprocess.py --device "8#Belt Conveyer" --aws
+   python model/src/preprocess.py --device "1#High-Temp Fan" --aws
+   python model/src/preprocess.py --device "Tube Mill" --aws
+   
+   # Step 2: Feature Engineering
+   python model/src/feature_engineer.py --device "8#Belt Conveyer" --aws
+   
+   # Step 3: Model Training (all models)
+   python model/src/model.py --model Baseline --device "8#Belt Conveyer" --aws --tune
+   python model/src/model.py --model Ridge --device "8#Belt Conveyer" --aws --tune
+   # ... (continues for all 7 models)
+   ```
+
+##### **Automated Execution with Cron**
+
+The cron job automatically runs the complete data pipeline every 6 hours, executing the following programs in sequence:
+- **Data Preprocessing**: `preprocess.py` for all 3 devices (1#High-Temp Fan, 8#Belt Conveyer, Tube Mill)
+- **Feature Engineering**: `feature_engineer.py` for 8#Belt Conveyer
+- **Model Training**: `model.py` for all 7 models (Baseline, Ridge, PolyRidgeDegree2, RandomForest, XGBoost, SVR, RuleTree)
+
+1. **Setup Cron Job**
+   ```bash
+   # Edit crontab
+   crontab -e
+   
+   # Add daily pipeline execution (runs every 6 hours)
+   0 */6 * * * PATH=/home/ubuntu/miniconda3/bin:/home/ubuntu/miniconda3/condabin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin /bin/bash -c '/home/jupyter-ubuntu/capstone/model/scripts/run_pipeline.sh >> /home/jupyter-ubuntu/capstone/model/scripts/logs/pipeline_$(date +\%Y\%m\%d_\%H\%M\%S).log 2>&1'
+   ```
+
+2. **Logging Directory**
+   The logs of the Cron job is currently located in `/home/jupyter-ubuntu/capstone/model/scripts/logs`.
+
+#### **Dashboard Deployment**
+
+```bash
+# Navigate to dashboard directory
+cd dashboard/src
+
+# Install dashboard dependencies (if not already installed)
+conda activate brilliant-auto-env
+
+# Run dashboard with AWS integration
+python app.py --aws
+```
+
+After starting the dashboard, you can view it at: **http://<ip_address>:8050/dashboard/**
+
+Example: [http://54.175.183.157:8050/dashboard/](http://54.175.183.157:8050/dashboard/)
+
+**To run in background:**
+```bash
+# Run dashboard in background (keeps running even after closing terminal)
+nohup python -m app --aws > /dev/null 2>&1 &
+
+# To stop the dashboard later:
+ps aux | grep python
+kill <PID>
+```
+
+**Note**: Use `nohup` if you want to keep the dashboard running even after you close your AWS terminal session.
