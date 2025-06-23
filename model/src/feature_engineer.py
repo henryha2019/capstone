@@ -2,17 +2,17 @@
 # feature_eng.py
 #
 # This script will:
-#  1. Find all .json files under each “<date>#Belt Conveyer” folder inside Data/voltage/
+#  1. Find all .json files under each “<date>#Belt Conveyer” folder inside data/voltage/
 #  2. Read axisX/axisY from each JSON
 #  3. Compute fs = 1 / (axisX[1] - axisX[0])
 #  4. Treat axisY as the raw waveform
 #  5. Compute DSP metrics (velocity_rms, crest_factor, etc.)
-#  6. Save metrics to Data/voltage/metrics_json.csv
-#  7. Read merged ratings/features from Data/process/8#Belt Conveyer_merged.csv
+#  6. Save metrics to data/voltage/metrics_json.csv
+#  7. Read merged ratings/features from data/processed/8#Belt Conveyer_merged.csv
 #  8. Rename all 12 rating columns (append "_rating")
 #  9. Bucket and summarize measurement features per rating/time window
 # 10. Join JSON metrics + bucket summary on matching location & time
-# 11. Save full features to Data/process/8#Belt Conveyer_full_features.csv
+# 11. Save full features to data/processed/8#Belt Conveyer_full_features.csv
 # ---------------------------------------------------------------------------- #
 
 import os
@@ -27,8 +27,8 @@ from scipy import stats
 
 # —————————— 1. CONFIGURATION ——————————
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-VOLTAGE_DIR  = PROJECT_ROOT / "Data" / "voltage"
-PROCESS_DIR  = PROJECT_ROOT / "Data" / "process"
+VOLTAGE_DIR  = PROJECT_ROOT / "data" / "voltage"
+PROCESS_DIR  = PROJECT_ROOT / "data" / "processed"
 
 # DSP metrics to compute from JSON
 METRIC_COLS = [

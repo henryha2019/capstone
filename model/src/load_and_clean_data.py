@@ -53,8 +53,8 @@ def process_device(device_name, aws_mode=False, s3_bucket='brilliant-automation-
     target_features = DEVICE_TARGET_FEATURES[device_key]
     
     if aws_mode:
-        input_key = f"process/{device_name}_merged.csv"
-        output_key = f"process/{device_name}_full.csv"
+        input_key = f"processed/{device_name}_merged.csv"
+        output_key = f"processed/{device_name}_full.csv"
         
         try:
             s3 = boto3.client('s3')
@@ -73,8 +73,8 @@ def process_device(device_name, aws_mode=False, s3_bucket='brilliant-automation-
             logging.error(f"Error processing {device_name} from S3: {str(e)}")
             raise
     else:
-        DATA_DIR = f"../../Data/process/{device_name}_merged.csv"
-        OUTPUT_DIR = f"../../Data/process/{device_name}_full.csv"
+        DATA_DIR = f"../../data/processed/{device_name}_merged.csv"
+        OUTPUT_DIR = f"../../data/processed/{device_name}_full.csv"
         
         try:
             df = pd.read_csv(DATA_DIR)
@@ -100,7 +100,7 @@ if __name__ == "__main__":
         try:
             process_device(device_name, aws_mode=args.aws, s3_bucket=args.s3_bucket)
         except Exception as e:
-            logging.error(f"Failed to process {device_name}: {str(e)}")
+            logging.error(f"Failed to processed {device_name}: {str(e)}")
             continue
     
     logging.info("Finished processing all devices")

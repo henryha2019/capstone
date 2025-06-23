@@ -1,59 +1,57 @@
-# brilliant_automation
+# **Brilliant Automation**
 
-## Getting Started
+## **1. Getting Started**
 
-Clone this repository:
+### **Clone the Repository**
 
 ```bash
 git clone https://github.com/Brilliant-Automation/capstone.git
 cd capstone
 ```
 
-## Create the Environment
-
-Create the environment from the environment.yml file:
+### **Create and Activate the Environment**
+Create the environment from the `environment.yml` file:
 
 ```bash
 conda env create -f environment.yml
 conda activate brilliant-auto-env
 ```
 
+
 ---
 
-## Makefile Usage
+## **2. Makefile Usage**
+> Use the provided `Makefile` to automate the modeling pipeline.
 
-We provide a `Makefile` at the project root to automate the modeling pipeline:
+### **Available Commands**
+| Command               | Description                                           |
+|-----------------------|-------------------------------------------------------|
+| `make all`            | Run the full pipeline: download → preprocess → train |
+| `make download`       | Only download raw data                                |
+| `make preprocess`     | Preprocess data for the specified device              |
+| `make features`       | Extract features for the specified device             |
+| `make train`          | Train models for the specified device                |
+| `make clean`          | Clean temporary files                                 |
 
-```bash
-make all          # download → preprocess → features → train & tune (default device)
-make download     # only download & unzip raw data
-make preprocess   # only run preprocessing
-make features     # only run feature extraction
-make train        # only run training & tuning
-make clean        # remove caches, logs, and archives
-```
-
-▶️ Specifying a Device
-By default, Makefile uses:
+### **Using `DEVICE`**
+To process a different `DEVICE`, specify it on the command line:
 ```bash
 DEVICE = 8#Belt Conveyer
 ```
-To run for a different device, pass DEVICE on the command line.
+---
 
-```
-make preprocess DEVICE="8#Belt Conveyer"
-make preprocess DEVICE="High-Temp Fan#1"
-make preprocess DEVICE="Tube Mill"
-```
-Under the hood, each target invokes the corresponding script, e.g.:
-```bash
-python model/src/preprocess.py       --device "$(DEVICE)"
-python model/src/feature_engineer.py --device "$(DEVICE)"
-python model/src/model.py           --model all --tune --device "$(DEVICE)"
-```
-This lets you flexibly switch which equipment you run the pipeline for without editing any code.
+## **3. Pipeline Scripts**
+Each target in the Makefile maps directly to a Python or shell script.
 
-## How to Generate the Proposal Report
+| Target         | Script                                   | Example                                                          |
+|----------------|-----------------------------------------|------------------------------------------------------------------|
+| `preprocess`   | `python model/src/preprocess.py`        | `python model/src/preprocess.py --device "8#Belt Conveyer"`      |
+| `features`     | `python model/src/feature_engineer.py`  | `python model/src/feature_engineer.py --device "Tube Mill"`      |
+| `train`        | `python model/src/model.py`             | `python model/src/model.py --model all --device "Tube Mill"`     |
+
+---
+
+## **4. How to Generate the Proposal Report**
 
 Follow these steps to generate the proposal report as a PDF:
 
@@ -72,7 +70,7 @@ This command processes the data for the specified device and prepares it for sub
 Execute the exploratory data analysis notebook to automatically generate all required plots:
 
 ```bash
-    jupyter nbconvert --to notebook --execute notebook/eda_conveyer_belt.ipynb
+    jupyter nbconvert --to notebook --execute notebooks/eda_conveyer_belt.ipynb
 ```
 
 This runs all the cells in the notebook and updates it with the generated outputs.
@@ -82,18 +80,18 @@ This runs all the cells in the notebook and updates it with the generated output
 Convert the Quarto document into a PDF report using the following command:
 
 ```bash
-  quarto render docs/proposal.qmd --to pdf
+  quarto render docs/reports/proposal.qmd --to pdf
 ```
 
 The `proposal.pdf` file will be generated and saved in the `docs` directory.
 
 ---
 
-## How to Run the Preprocessing Script
+## **5. How to Run the Preprocessing Script**
 
 The preprocessing script processes raw sensor and ratings data and outputs a merged dataset for further analysis.
 
-### **Supported Devices**
+###  **Supported Devices**
 
 The script currently supports the following devices:
 
@@ -126,7 +124,7 @@ python model/src/preprocess.py --device "<device_name>" [--data_dir <data_direct
    Output:
 
    ```bash
-   Data/process/8#Belt Conveyer_merged.csv
+   data/processed/8#Belt Conveyer_merged.csv
    model/src/preprocessing.log
    ```
 
@@ -138,7 +136,7 @@ python model/src/preprocess.py --device "<device_name>" [--data_dir <data_direct
 
 ---
 
-## How to Run the Dashboard
+## **6. How to Run the Dashboard**
 
 The dashboard currently uses sample data in `data/sample_belt_conveyer.csv` and does not reflect results from our models.
 
@@ -151,7 +149,7 @@ Go to `http://127.0.0.1:8050/dashboard/` to view the dashboard.
 
 ---
 
-## AWS Deployment
+## **7. AWS Deployment**
 
 ### Setting up Cron Jobs on AWS EC2
 

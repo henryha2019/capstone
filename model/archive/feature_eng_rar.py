@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # compute_all_metrics.py
 #
-# Walks through every *.Single under Data/voltage/extracted/,
+# Walks through every *.Single under data/voltage/extracted/,
 # reads each waveform (4-byte float32 header + float32 samples),
 # and computes:
 #   • velocity_rms
@@ -18,7 +18,7 @@
 #   rotor_balance_status, alignment_status, fit_condition,
 #   bearing_lubrication, rubbing_condition, electromagnetic_status
 #
-# Finally, it prints the first 10 rows and saves a CSV to Data/voltage/metrics_all.csv
+# Finally, it prints the first 10 rows and saves a CSV to data/voltage/metrics_all.csv
 # --------------------------------------------------------------------------- #
 
 import os
@@ -33,7 +33,7 @@ from scipy import stats, signal
 # —————————— 1. CONFIGURATION ——————————
 # This script assumes it lives at <project_root>/model/src/compute_all_metrics.py
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-DATA_DIR     = PROJECT_ROOT / "Data" / "voltage"
+DATA_DIR     = PROJECT_ROOT / "data" / "voltage"
 EXTRACT_DIR  = DATA_DIR / "extracted"
 
 # Sampling rate is read from each .Single’s header, so no fixed fs here.

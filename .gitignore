@@ -1,23 +1,47 @@
-# macOS system files
 .DS_Store
 
 # Python cache
 **/__pycache__/
+*.pyc
+
+# Logs
+*.log
+*.gz
 
 # R history and workspace files
 .Rhistory
+.RData
 docs/.Rhistory
 docs/.RData
 
-# Project data folder
-Data/**
+# Jupyter notebooks checkpoints
+.ipynb_checkpoints/
 
-# …except keep the “result” directory
-!Data/result/
-!Data/result/**
-
-notebook/eda_conveyer_belt.nbconvert.ipynb
+# Metadata and IDE configurations
 .idea/
-cv_metrics.csv
 
-*.log
+# Dataset directory exclusions
+# Exclude raw data files but keep essential metadata or configuration files
+data/raw/
+data/voltage/
+data/raw_voltage/
+data/processed/*.csv         # Exclude processed datasets (if reproducible)
+data/processed/*.xlsx        # Exclude intermediate Excel files
+
+Data/processed/*.csv
+
+Data/
+# Dashboard assets
+dashboard/src/assets/*.css.map
+
+# Misc output files
+notebooks/eda_conveyer_belt.nbconvert.ipynb
+
+# Temporary/backup files
+*.tmp
+*.bak
+*.swp
+
+# Ignore individual old or unnecessary files if needed (cleaning up)
+8#Belt Conveyer_PolyRidgeDegree2_cv_metrics.csv
+8#Belt Conveyer_Ridge_cv_metrics.csv

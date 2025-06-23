@@ -55,7 +55,7 @@ def evaluate_cv(cv_results):
 
 def main():
     # Load and clean data
-    df = pd.read_csv('Data/process/8#Belt Conveyer_merged.csv')
+    df = pd.read_csv('data/processed/8#Belt Conveyer_merged.csv')
     df = df.drop(columns=['Device'], errors='ignore').dropna()
     df = df[:100000]
 

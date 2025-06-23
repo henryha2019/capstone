@@ -58,7 +58,7 @@ else
     exit 1
 fi
 
-# echo "=== Starting Load and Clean Data Step ==="
+# echo "=== Starting Load and Clean data Step ==="
 # if ! run_load_and_clean; then
 #     echo "Load and clean data step failed"
 #     exit 1

@@ -79,7 +79,7 @@ def log_dataframe_metadata(df, df_name):
 
     logging.info(f"{separator}\n")
 
-def read_device_files(device_name, data_dir="../Data/raw", aws_mode=False, s3_bucket='brilliant-automation-capstone'):
+def read_device_files(device_name, data_dir="../data/raw", aws_mode=False, s3_bucket='brilliant-automation-capstone'):
     """
     Reads all Excel files for a given device name, ignoring any prefix like date ranges.
     If aws_mode is True, reads files from S3 bucket brilliant-automation-capstone/raw instead of local directory.
@@ -207,8 +207,8 @@ if __name__ == "__main__":
         description="Preprocess sensor and ratings data for a device."
     )
     parser.add_argument("--device", required=True, help="Device name, e.g. '8#Belt Conveyer'")
-    parser.add_argument("--data_dir", default="Data/raw", help="Directory containing raw .xlsx data files (default: Data/raw)")
-    parser.add_argument("--output_dir", default="Data/process", help="Directory to save processed data (default: Data/process)")
+    parser.add_argument("--data_dir", default="data/raw", help="Directory containing raw .xlsx data files (default: data/raw)")
+    parser.add_argument("--output_dir", default="data/processed", help="Directory to save processed data (default: data/processed)")
     parser.add_argument("--aws", action="store_true", help="Read/write data from/to S3 bucket instead of local directory")
 
     args = parser.parse_args()
@@ -244,7 +244,7 @@ if __name__ == "__main__":
 
     features_df.drop(columns=["Date", "Time", "id"], inplace=True)
     rating_df.drop(columns=["Date", "Time"], inplace=True)
-    
+
     pivot_features_df = features_df.pivot_table(
         index=["datetime", "location"],
         columns="Measurement",
@@ -291,7 +291,7 @@ if __name__ == "__main__":
     if aws_mode:
         # Write merged_df to S3 as CSV
         s3 = boto3.client('s3')
-        output_key = f"process/{device}_merged.csv"
+        output_key = f"processed/{device}_merged.csv"
         csv_buffer = io.StringIO()
         merged_df.to_csv(csv_buffer, index=False)
         s3.put_object(Bucket=s3_bucket, Key=output_key, Body=csv_buffer.getvalue())

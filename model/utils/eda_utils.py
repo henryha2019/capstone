@@ -29,7 +29,7 @@ def show_summary(df):
     Returns:
         None
     """
-    print("Data Info:")
+    print("data Info:")
     print(df.info())
     print("\nStatistical Summary:")
     print(df.describe())

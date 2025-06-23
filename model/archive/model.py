@@ -53,7 +53,7 @@ def main():
             return
     else:
         try:
-            df = pd.read_csv(f'Data/process/{args.device}_merged.csv')
+            df = pd.read_csv(f'data/process/{args.device}_merged.csv')
         except FileNotFoundError:
             print(f"Error: Could not find data file for device {args.device}")
             return
