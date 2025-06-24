@@ -155,7 +155,7 @@ def main():
     if args.aws:
         print(f"Loading data from S3 bucket: {s3_bucket}")
         s3 = boto3.client('s3')
-        s3_key = f"processed/{args.device}_full_features.csv"
+        s3_key = f"preprocessed/{args.device}_full_features.csv"
         try:
             obj = s3.get_object(Bucket=s3_bucket, Key=s3_key)
             df = pd.read_csv(io.BytesIO(obj['Body'].read()), parse_dates=['datetime'])
@@ -165,7 +165,7 @@ def main():
             return
     else:
         # Load dataset (input data stays in the data directory)
-        data_path = Path('data') / 'processed' / f"{args.device}_full_features.csv"
+        data_path = Path('data') / 'preprocessed' / f"{args.device}_full_features.csv"
         if not data_path.exists():
             print(f"File not found: {data_path}")
             return

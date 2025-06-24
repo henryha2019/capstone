@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-DATA_DIR="Data/voltage"
+DATA_DIR="data/voltage"
 ZIP_NAME="voltage.zip"
 FILE_ID="10qpmMubE_BZK_Uwgi3K80DK-X2h6k88T"
 TEMP_UNZIP_DIR="temp_unzip_voltage"

@@ -325,7 +325,7 @@ Our end-to-end data pipeline leverages AWS cloud services to automate the collec
 
 #### Architecture Overview
 
-![AWS Data Pipeline Architecture](images/final_report_figures/AWS_Data_Pipeline.png)
+![AWS Data Pipeline Architecture](../images/final_report_figures/AWS_Data_Pipeline.png)
 
 The pipeline follows a three-tier architecture connecting client operations to cloud analytics:
 

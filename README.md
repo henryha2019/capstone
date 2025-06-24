@@ -32,6 +32,11 @@ conda activate brilliant-auto-env
 | `make features`       | Extract features for the specified device             |
 | `make train`          | Train models for the specified device                |
 | `make clean`          | Clean temporary files                                 |
+| `make tests`          | Run all test cases using `pytest`                    |
+| `make proposal-report`| Generate the proposal report                          |
+| `make final-report`   | Generate the final report  
+
+---
 
 ### **Using `DEVICE`**
 To process a different `DEVICE`, specify it on the command line:
@@ -87,7 +92,19 @@ The `proposal.pdf` file will be generated and saved in the `docs` directory.
 
 ---
 
-## **5. How to Run the Preprocessing Script**
+## **5. How to Generate the Final Report**
+
+Convert the Quarto document into a PDF report using the following command:
+
+```bash
+  quarto render docs/reports/final_report.qmd --to pdf
+```
+
+The `final_report.pdf` file will be generated and saved in the `docs` directory.
+
+---
+
+## **6. How to Run the Preprocessing Script**
 
 The preprocessing script processes raw sensor and ratings data and outputs a merged dataset for further analysis.
 
@@ -136,7 +153,7 @@ python model/src/preprocess.py --device "<device_name>" [--data_dir <data_direct
 
 ---
 
-## **6. How to Run the Dashboard**
+## **7. How to Run the Dashboard**
 
 ```bash
 cd dashboard/src
@@ -147,7 +164,7 @@ Go to `http://127.0.0.1:8050/dashboard/` to view the dashboard.
 
 ---
 
-## **7. AWS Data Pipeline**
+## **8. AWS Data Pipeline**
 
 ### Architecture Overview
 
