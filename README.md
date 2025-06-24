@@ -153,7 +153,75 @@ python model/src/preprocess.py --device "<device_name>" [--data_dir <data_direct
 
 ---
 
-## **7. How to Run the Dashboard**
+## **7. How to Run Unit Tests**
+
+The project includes comprehensive unit tests for the data processing pipeline. Tests are located in the `model/tests/` directory and cover preprocessing, feature engineering, and model functionality.
+
+### **Running Tests**
+
+From the root directory of the project:
+
+```bash
+# Navigate to the model directory
+cd model
+
+# Run preprocessing tests
+python -m pytest tests/test_preprocess.py -v
+
+# Run feature engineering tests  
+python -m pytest tests/test_feature_engineer.py -v
+
+# Run all tests at once
+python -m pytest tests/ -v
+
+# Run tests with coverage report
+python -m pytest tests/ --cov=src --cov-report=html
+
+# Run specific test function
+python -m pytest tests/test_preprocess.py::test_log_dataframe_metadata -v
+```
+
+### **Test Coverage**
+
+The test suite covers:
+
+#### **Preprocessing Tests (`test_preprocess.py`)**
+- **`test_log_dataframe_metadata`** - Tests logging functionality for dataframe metadata
+- **`test_filter_datetime_range`** - Tests datetime filtering functionality
+
+#### **Feature Engineering Tests (`test_feature_engineer.py`)**
+- **DSP Processing Tests**
+  - `test_read_json_file_*` - JSON file reading and validation
+  - `test_band_rms` - RMS calculation in frequency bands
+  - `test_band_peak` - Peak calculation in frequency bands
+- **File Handling Tests**
+  - `test_collect_json_files_local_mode` - JSON file collection from local directories
+  - `test_read_merged_csv_local_mode` - CSV reading functionality
+  - `test_save_csv_local_mode` - CSV saving functionality
+- **Bucket Processing Tests**
+  - `test_bucket_summary` - Time-based data bucketing and summarization
+- **Parametrized Tests**
+  - Multiple sampling rates and frequency bands
+  - Different bucket intervals
+- **Error Handling Tests**
+  - Invalid file paths, malformed JSON, invalid parameters
+
+### **Test Requirements**
+
+Ensure you have the testing dependencies installed:
+
+```bash
+# Install testing dependencies (if not already installed)
+conda activate brilliant-auto-env
+pip install pytest pytest-cov
+
+# Or install from requirements if available
+pip install -r requirements-test.txt  # if exists
+```
+
+---
+
+## **8. How to Run the Dashboard**
 
 ```bash
 cd dashboard/src
@@ -164,7 +232,7 @@ Go to `http://127.0.0.1:8050/dashboard/` to view the dashboard.
 
 ---
 
-## **8. AWS Data Pipeline**
+## **9. AWS Data Pipeline**
 
 ### Architecture Overview
 
