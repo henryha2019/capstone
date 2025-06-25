@@ -1,4 +1,4 @@
-.PHONY: all download preprocess features train clean tests dashboard 
+.PHONY: all preprocess features train clean tests dashboard 
 
 # ——— Variables ———
 # Default device; override by calling:
@@ -7,13 +7,7 @@
 DEVICE ?= 8\#Belt Conveyer
 
 # ——— Default target ———
-all: download preprocess features train tests dashboard
-
-# ——— Download step ———
-download:
-	@echo "🔽 Downloading voltage data..."
-	@chmod +x ./model/scripts/download_voltage_data.sh
-	@./model/scripts/download_voltage_data.sh
+all: preprocess features train tests dashboard
 
 # ——— Preprocessing ———
 preprocess:
