@@ -155,9 +155,9 @@ python model/src/preprocess.py --device "<device_name>" [--data_dir <data_direct
 
 ## **7. How to Run Unit Tests**
 
-The project includes comprehensive unit tests for the data processing pipeline. Tests are located in the `model/tests/` directory and cover preprocessing, feature engineering, and model functionality.
+The project includes comprehensive unit tests for the data processing pipeline. Tests are located in the `model/tests/` directory and `dashboard/src/tests/` and cover preprocessing, feature engineering, model functionality, and key dashboard scripts.
 
-### **Running Tests**
+### **Running Model Tests**
 
 From the root directory of the project:
 
@@ -179,6 +179,18 @@ python -m pytest tests/ --cov=src --cov-report=html
 
 # Run specific test function
 python -m pytest tests/test_preprocess.py::test_log_dataframe_metadata -v
+```
+
+### **Running Dashboard Tests**
+
+From the root directory of the project:
+
+```bash
+# Navigate to the model directory
+cd dashboard/src
+
+# Run all tests
+pytest tests/
 ```
 
 ### **Test Coverage**
