@@ -10,64 +10,63 @@ from sklearn.preprocessing import StandardScaler, OneHotEncoder, PolynomialFeatu
 from sklearn.dummy import DummyRegressor
 from sklearn.linear_model import Ridge
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.multioutput import MultiOutputRegressor
-from sklearn.model_selection import cross_validate
-from sklearn.model_selection import TimeSeriesSplit
+from sklearn.model_selection import cross_validate, TimeSeriesSplit
 from sklearn.metrics import make_scorer, mean_squared_error, mean_absolute_error, r2_score, explained_variance_score
 
 
-def evaluate_cv(cv_results):
+def load_and_clean_data(device: str, aws: bool) -> pd.DataFrame:
     """
-    Summarize cross-validation results into a DataFrame.
-    Assumes negative MSE/MAE are returned, so we convert them back.
+    Load and clean the dataset for a given device.
+
+    Reads a CSV from S3 or local filesystem, drops the 'Device' column, and removes rows with missing values.
+
+    Args:
+        device (str): Name of the device, used to construct the filename.
+        aws (bool): If True, reads from S3 bucket 'brilliant-automation-capstone'; else reads locally.
+
+    Returns:
+        pd.DataFrame: Cleaned DataFrame ready for preprocessing.
     """
-    metrics = {
-        'MSE': -cv_results['test_neg_mean_squared_error'],
-        'RMSE': np.sqrt(-cv_results['test_neg_mean_squared_error']),
-        'MAE': -cv_results['test_neg_mean_absolute_error'],
-        'R2': cv_results['test_r2'],
-        'Explained Variance': cv_results['test_explained_variance']
-    }
-    df = pd.DataFrame(metrics)
-    return df.mean().to_frame().T
-
-
-def main():
-    parser = argparse.ArgumentParser(description="Train and evaluate machine learning models for device data.")
-    parser.add_argument("--model", choices=['Baseline', 'Ridge', 'PolyRidgeDegree2', 'PolyRidgeDegree5', 'RandomForest', 'all'], 
-                      default='all', help="Model to train (default: all)")
-    parser.add_argument("--aws", action="store_true", help="Read/write data from/to S3 bucket")
-    parser.add_argument("--device", default="8#Belt Conveyer", help="Device name (default: 8#Belt Conveyer)")
-    args = parser.parse_args()
-
-    # Load and clean data
-    if args.aws:
+    if aws:
         s3 = boto3.client('s3')
         bucket = 'brilliant-automation-capstone'
-        key = f"process/{args.device}_merged.csv"
-        try:
-            obj = s3.get_object(Bucket=bucket, Key=key)
-            df = pd.read_csv(io.BytesIO(obj['Body'].read()))
-        except Exception as e:
-            print(f"Error reading from S3: {e}")
-            return
+        key = f"process/{device}_merged.csv"
+        obj = s3.get_object(Bucket=bucket, Key=key)
+        df = pd.read_csv(io.BytesIO(obj['Body'].read()))
     else:
-        try:
-            df = pd.read_csv(f'data/process/{args.device}_merged.csv')
-        except FileNotFoundError:
-            print(f"Error: Could not find data file for device {args.device}")
-            return
-
+        df = pd.read_csv(f'data/processed/{device}_merged.csv')
     df = df.drop(columns=['Device'], errors='ignore').dropna()
-    # Using a sample dataset comment line below for full data
-    # df = df[:100000]
+    return df
 
-    # Preprocessing: datetime → timestamp, location → one-hot
+
+def preprocess(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Preprocess raw DataFrame by encoding datetime and location.
+
+    Converts 'datetime' to UNIX timestamp and one-hot encodes 'location'.
+
+    Args:
+        df (pd.DataFrame): Raw DataFrame containing 'datetime' and 'location' columns.
+
+    Returns:
+        pd.DataFrame: Transformed DataFrame with new features.
+    """
     df['datetime'] = pd.to_datetime(df['datetime'])
     df['datetime_ts'] = df['datetime'].astype('int64') // 10**9
     df = pd.get_dummies(df, columns=['location'], prefix='loc')
+    return df
 
-    # Features and targets
+
+def get_feature_target(df: pd.DataFrame):
+    """
+    Split DataFrame into features (X) and target matrix (y).
+
+    Args:
+        df (pd.DataFrame): Preprocessed DataFrame.
+
+    Returns:
+        tuple: (X, y, numeric_features, categorical_features)
+    """
     numeric_features = [
         'datetime_ts',
         'High-Frequency Acceleration',
@@ -78,28 +77,84 @@ def main():
     categorical_features = [c for c in df.columns if c.startswith('loc_')]
     X = df[numeric_features + categorical_features]
     y = df.drop(columns=numeric_features + categorical_features + ['datetime'])
+    return X, y, numeric_features, categorical_features
 
-    # Base preprocessors
-    numeric_transformer = Pipeline([('scaler', StandardScaler())])
-    categorical_transformer = Pipeline([('encoder', OneHotEncoder(handle_unknown='ignore'))])
 
-    # Polynomial preprocessors
-    numeric_poly2 = Pipeline([
-        ('scaler', StandardScaler()),
-        ('poly', PolynomialFeatures(degree=2, include_bias=False))
-    ])
-    numeric_poly5 = Pipeline([
-        ('scaler', StandardScaler()),
-        ('poly', PolynomialFeatures(degree=5, include_bias=False))
-    ])
+def evaluate_cv(cv_results: dict) -> pd.DataFrame:
+    """
+    Summarize cross-validation results into averaged metrics.
 
-    # ColumnTransformers for each
+    Args:
+        cv_results (dict): Output from cross_validate containing negative errors and metrics.
+
+    Returns:
+        pd.DataFrame: Single-row DataFrame with averaged MSE, RMSE, MAE, R2, and Explained Variance.
+    """
+    mse = -cv_results['test_neg_mean_squared_error']
+    mae = -cv_results['test_neg_mean_absolute_error']
+    return pd.DataFrame({
+        'MSE': mse,
+        'RMSE': np.sqrt(mse),
+        'MAE': mae,
+        'R2': cv_results['test_r2'],
+        'Explained Variance': cv_results['test_explained_variance']
+    }).mean().to_frame().T
+
+
+def save_results(cv_df: pd.DataFrame, device: str, model_name: str, aws: bool) -> None:
+    """
+    Save cross-validation results to CSV locally or on S3.
+
+    Args:
+        cv_df (pd.DataFrame): DataFrame of CV metrics.
+        device (str): Device identifier used in filename.
+        model_name (str): Model identifier used in filename.
+        aws (bool): If True, uploads to S3 under 'results/'.
+    """
+    filename = f"{device}_{model_name}_cv_metrics.csv"
+    if aws:
+        csv_buffer = io.StringIO()
+        cv_df.to_csv(csv_buffer, index=False)
+        s3 = boto3.client('s3')
+        s3.put_object(Bucket='brilliant-automation-capstone', Key=f"results/{filename}", Body=csv_buffer.getvalue())
+        print(f"Results saved to s3://brilliant-automation-capstone/results/{filename}")
+    else:
+        output_dir = 'model/archive/result'
+        os.makedirs(output_dir, exist_ok=True)
+        path = os.path.join(output_dir, filename)
+        cv_df.to_csv(path, index=False)
+        print(f"Results saved to {path}")
+
+
+def main():
+    """
+    Orchestrate data loading, preprocessing, model evaluation, and result saving.
+
+    Parses command-line arguments, runs CV for selected models, and outputs metrics.
+    """
+    parser = argparse.ArgumentParser(description="Train and evaluate ML models for device data.")
+    parser.add_argument("--model", choices=['Baseline','Ridge','PolyRidgeDegree2','PolyRidgeDegree5','RandomForest','all'],
+                        default='all', help="Model to train (default: all)")
+    parser.add_argument("--aws", action="store_true", help="Read/write data from/to S3")
+    parser.add_argument("--device", default="8#Belt Conveyer", help="Device name")
+    args = parser.parse_args()
+
+    df = load_and_clean_data(args.device, args.aws)
+    df = df.iloc[:10000]  # <-- limit to first 10k rows
+    df = preprocess(df)
+    X, y, num_feats, cat_feats = get_feature_target(df)
+
+    # Define preprocessors
+    num_pipe = Pipeline([('scaler', StandardScaler())])
+    cat_pipe = Pipeline([('encoder', OneHotEncoder(handle_unknown='ignore'))])
+    poly2_pipe = Pipeline([('scaler', StandardScaler()), ('poly', PolynomialFeatures(2, include_bias=False))])
+    poly5_pipe = Pipeline([('scaler', StandardScaler()), ('poly', PolynomialFeatures(5, include_bias=False))])
     preprocessors = {
-        'Baseline': ColumnTransformer([('num', numeric_transformer, numeric_features), ('cat', categorical_transformer, categorical_features)]),
-        'Ridge': ColumnTransformer([('num', numeric_transformer, numeric_features), ('cat', categorical_transformer, categorical_features)]),
-        'PolyRidgeDegree2': ColumnTransformer([('num', numeric_poly2, numeric_features), ('cat', categorical_transformer, categorical_features)]),
-        'PolyRidgeDegree5': ColumnTransformer([('num', numeric_poly5, numeric_features), ('cat', categorical_transformer, categorical_features)]),
-        'RandomForest': ColumnTransformer([('num', numeric_transformer, numeric_features), ('cat', categorical_transformer, categorical_features)])
+        'Baseline': ColumnTransformer([('num', num_pipe, num_feats), ('cat', cat_pipe, cat_feats)]),
+        'Ridge': ColumnTransformer([('num', num_pipe, num_feats), ('cat', cat_pipe, cat_feats)]),
+        'PolyRidgeDegree2': ColumnTransformer([('num', poly2_pipe, num_feats), ('cat', cat_pipe, cat_feats)]),
+        'PolyRidgeDegree5': ColumnTransformer([('num', poly5_pipe, num_feats), ('cat', cat_pipe, cat_feats)]),
+        'RandomForest': ColumnTransformer([('num', num_pipe, num_feats), ('cat', cat_pipe, cat_feats)])
     }
 
     models = {
@@ -109,8 +164,7 @@ def main():
         'PolyRidgeDegree5': Ridge(alpha=1.0),
         'RandomForest': RandomForestRegressor(n_estimators=100, random_state=42)
     }
-
-    selected_models = models if args.model == 'all' else {args.model: models[args.model]}
+    selected = models if args.model=='all' else {args.model: models[args.model]}
 
     scoring = {
         'neg_mean_squared_error': make_scorer(mean_squared_error, greater_is_better=False),
@@ -119,35 +173,19 @@ def main():
         'explained_variance': make_scorer(explained_variance_score)
     }
 
-    results_list = []
-    for model_name, model in selected_models.items():
-        preprocessor = preprocessors[model_name]
-        for target_col in y.columns:
-            pipe = Pipeline([('pre', preprocessor), ('reg', model)])
-            tscv = TimeSeriesSplit(n_splits=5)
-            cv_res = cross_validate(pipe, X, y[target_col], cv=tscv, scoring=scoring, n_jobs=-1)
+    results = []
+    for name, mdl in selected.items():
+        for target in y.columns:
+            pipe = Pipeline([('pre', preprocessors[name]), ('reg', mdl)])
+            cv_res = cross_validate(pipe, X, y[target], cv=TimeSeriesSplit(n_splits=5), scoring=scoring, n_jobs=-1)
             summary = evaluate_cv(cv_res)
-            summary.insert(0, 'Target', target_col)
-            summary.insert(0, 'Model', model_name)
-            results_list.append(summary)
+            summary.insert(0, 'Target', target)
+            summary.insert(0, 'Model', name)
+            results.append(summary)
 
-    cv_df = pd.concat(results_list, ignore_index=True)
-    print("Cross-Validation Metrics (averaged):")
+    cv_df = pd.concat(results, ignore_index=True)
     print(cv_df.to_string(index=False))
-
-    # Save results
-    if args.aws:
-        s3 = boto3.client('s3')
-        bucket = 'brilliant-automation-capstone'
-        key = f"results/{args.device}_{args.model}_cv_metrics.csv"
-        csv_buffer = io.StringIO()
-        cv_df.to_csv(csv_buffer, index=False)
-        s3.put_object(Bucket=bucket, Key=key, Body=csv_buffer.getvalue())
-        print(f"Results saved to s3://{bucket}/{key}")
-    else:
-        output_file = f'{args.device}_{args.model}_cv_metrics.csv'
-        cv_df.to_csv(output_file, index=False)
-        print(f"Results saved to {output_file}")
+    save_results(cv_df, args.device, args.model, args.aws)
 
 
 if __name__ == '__main__':
