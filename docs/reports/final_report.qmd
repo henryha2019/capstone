@@ -1,7 +1,7 @@
 ---
 title: "Final Project Report: Interpretable Machine Learning for Industrial Equipment Health Monitoring"
 author: "Samuel Adetsi, Mu Ha, Cheng Zhang, Michael Hewlett"
-date: "June 2025"
+date: "24 June 2025"
 format:
   pdf:
     toc: true
@@ -50,7 +50,7 @@ vibration and temperature data (5-second intervals) from tube mills,
 belt conveyors, and high-temperature fans are ingested, logged, and
 synchronized with 20-minute human-annotated health ratings. Robust
 preprocessing merges, pivots, and window-aggregates sensor streams,
-while feature engineering scripts extract spectral DSP metrics and
+while feature engineering scripts extract spectral digital signal processing (DSP) metrics and
 time-domain summaries to yield a rich feature set for modeling.
 
 We evaluated seven algorithm classes—from a mean-based baseline through
@@ -88,9 +88,15 @@ performance of the current system while enabling greater insight into
 the rationale behind predictions.
 
 The project focuses on three types of industrial equipment: a tube mill,
-a belt conveyor (#8), and a high-temperature fan (#1). Each device is
+a belt conveyor, and a high-temperature fan. Each device is
 outfitted with sensors measuring four physical signals (acceleration,
-vibration velocity, temperature) at various locations and intervals.
+vibration velocity, temperature) at various locations and intervals. Figures 1-3 below show the devices and their sensor placements.
+
+![Sensor placements on Tube Mills](../images/final_report_figures/final_report_machinery_sensor_1.jpg){#fig-sensor-placement-1}
+
+![Sensor placements on Belt Conveyors](../images/final_report_figures/final_report_machinery_sensor_2.jpg){#fig-sensor-placement-2}
+
+![Sensor placements on High-Temperature Fans](../images/final_report_figures/final_report_machinery_sensor_3.jpg){#fig-sensor-placement-3}
 
 ### Data Description
 
@@ -163,7 +169,7 @@ timestamps.
 After preprocessing, the `feature_eng.py` script enhances the dataset
 with frequency-domain insights. It scans every JSON file under
 `Data/voltage/`, extracts `axisX` and `axisY` data to compute sampling
-frequency, and applies digital signal processing (DSP) functions to
+frequency, and applies DSP functions to
 derive metrics like velocity RMS, crest factor, kurtosis, and
 band-specific RMS and peak values. These metrics capture subtle
 anomalies in vibration signals that are not apparent in time-domain
@@ -172,9 +178,7 @@ summaries.
 Next, the script reads the merged sensor-rating CSV, appends `_rating`
 to each health rating column, and groups data into 20-minute buckets by
 location. For each bucket, we compute count, mean, standard deviation,
-minimum, and maximum for core measurements. This bucketing respects
-rating changes and time-based windowing, ensuring that each aggregated
-feature set corresponds to a consistent health annotation.
+minimum, and maximum for core measurements, creating aggregated statistical features that capture temporal patterns within each rating window.
 
 Finally, DSP metrics and bucketed summaries are joined using
 interval-index lookups, resulting in a comprehensive feature table. This
@@ -206,6 +210,17 @@ resulting in 12–15 distinct training runs per model type. This
 per-target approach allows each model to specialize in the patterns of
 individual ratings, although it increases overall computational load and
 storage requirements compared to a multi-output strategy.
+
+While our dataset includes three equipment types (tube mill, belt
+conveyor, high-temperature fan), we focused our detailed analysis on the
+belt conveyor due to data availability and completeness. The modeling
+pipeline applies identical training logic across all equipment
+types—the same preprocessing steps, feature engineering methods, model
+architectures, and evaluation metrics are used regardless of equipment
+type. This unified approach ensures consistency and enables easy
+extension to additional equipment as more data becomes available. The
+preprocessing pipeline supports all three equipment types, but model
+training results presented focus primarily on the belt conveyor dataset.
 
 #### Model Rationale and Interpretability vs. Accuracy
 
@@ -457,6 +472,6 @@ joint effort across disciplines.
 
 -   Mu Ha: Model development and evaluation
 
--   Cheng Zhang: Pipeline engineering and infrastructure
+-   Cheng Zhang: AWS pipeline engineering and infrastructure
 
 -   Michael Hewlett: Dashboard and interface design
