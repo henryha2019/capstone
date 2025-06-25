@@ -1,9 +1,9 @@
 #!/bin/bash
 set -e
 
-DATA_DIR="Data/voltage"
+DATA_DIR="data/voltage"
 ZIP_NAME="voltage.zip"
-FILE_ID="10qpmMubE_BZK_Uwgi3K80DK-X2h6k88T"
+FILE_ID="1dsNqNYfvnSS6W5rAwDHOULK0m53Artsp"
 TEMP_UNZIP_DIR="temp_unzip_voltage"
 
 # Make sure the target folder exists
@@ -11,8 +11,8 @@ mkdir -p "$DATA_DIR"
 
 # Skip if already populated
 if [ -z "$(ls -A "$DATA_DIR")" ]; then
-  echo "📥 Downloading $ZIP_NAME from Google Drive..."
-  gdown "https://drive.google.com/uc?id=$FILE_ID" -O "$ZIP_NAME"
+  echo "📥 Downloading $ZIP_NAME from Google Drive (large file workaround)..."
+  gdown "https://drive.google.com/uc?export=download&id=${FILE_ID}&confirm=t" -O "$ZIP_NAME"
 
   echo "📦 Unzipping to temporary folder..."
   rm -rf "$TEMP_UNZIP_DIR"

@@ -338,7 +338,7 @@ def test_read_merged_csv_local_mode(tmp_path):
     process_dir.mkdir(parents=True)
 
     test_data = pd.DataFrame({
-        'datetime': pd.date_range('2023-01-01', periods=3, freq='H'),
+        'datetime': pd.date_range('2023-01-01', periods=3, freq='h'),
         'location': ['A', 'B', 'C'],
         'value': [1, 2, 3]
     })
