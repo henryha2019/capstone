@@ -339,9 +339,9 @@ The pipeline follows a three-tier architecture connecting client operations to c
 
 - **Data Collection Layer:** Raw sensor data originates from Brilliant Automation's client database and is transferred to employee computers using remote desktop connections. This maintains security while enabling data access from industrial environments.
 
-- **Storage Layer:** AWS S3 serves as the centralized data repository, hosting both raw sensor files and processed feature datasets. This design enables easy access and sharing between different pipeline components while providing robust backup and versioning capabilities.
+- **Storage Layer:** AWS S3 serves as the centralized data repository, hosting both raw sensor and voltage files, processed feature datasets and ML model training outputs. This design enables easy access and sharing between different pipeline components while providing robust backup and versioning capabilities.
 
-- **Processing Layer:** AWS EC2 instances host the data processing scripts, machine learning models, and the interactive dashboard. A dedicated EC2 environment ensures consistent computational resources and simplified dependency management.
+- **Processing Layer:** AWS EC2 instances host the data processing scripts, machine learning models, and the interactive dashboard. We selected EC2 over serverless alternatives (Lambda, Fargate) due to several architectural requirements: (1) long-running processes for model training that exceed Lambda's 15-minute timeout limit, (2) the need for persistent storage of large datasets and model artifacts during processing, (3) partner preference for a traditional server environment that mirrors their existing infrastructure, and (4) the requirement to run JupyterHub for interactive development and debugging. A dedicated EC2 environment ensures consistent computational resources and simplified dependency management while providing the flexibility needed for complex ML workloads.
 
 #### Key AWS Services
 
@@ -370,10 +370,6 @@ The automated AWS architecture delivers several key advantages:
 - **Accessibility:** Centralized data storage in S3 and a web-based dashboard make equipment insights available to all stakeholders across different locations and devices.
 
 - **Integration:** The modular architecture facilitates easy addition of new analytics or machine learning models as requirements evolve, without disrupting existing operations.
-
-#### Current Implementation
-
-The current pipeline processes data from three equipment types (tube mills, belt conveyors, high-temperature fans) with 15 sensor monitoring points generating measurements every 5 seconds. Health ratings are synchronized with sensor data every 20 minutes, and the complete feature engineering and prediction cycle runs automatically on a daily schedule. The dashboard provides real-time access to current equipment status, historical trends, and model prediction confidence intervals.
 
 ## Conclusions and Recommendations
 
