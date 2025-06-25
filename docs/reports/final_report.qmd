@@ -317,7 +317,15 @@ flexibility and reliability for industrial equipment health prediction.
 
 ### Dashboard
 
-The dashboard contains real-time equipment rating monitoring, alerts, and visualizations.
+The dashboard provides real-time monitoring of equipment health ratings, including alerts and visualizations tailored to the client’s workflow. From the outset, the client specified the required visualizations based on industry standards. As such, the focus was not on selecting novel charts or polishing visual design, but on accurately implementing their specifications in a clear, functional layout.
+
+Originally, we aimed to display all visualizations on a single scroll-free page to facilitate screenshots that could be pasted into internal reports. However, through an iterative design process involving regular MVP demos and feedback sessions, the client requested tab-based navigation to better isolate visualizations by rating category. This layout was adopted in the final design, improving clarity without sacrificing accessibility.
+
+The dashboard supports time filtering and equipment selection via dropdowns, and each chart dynamically updates based on these selections. To save space and reduce visual clutter, we removed legends and used emoji-based colour chips beside dropdown options to map to chart lines. This approach had limitations: the emoji palette restricts the range of distinguishable colours and poses accessibility issues for colour-blind users. Nonetheless, the client preferred the cleaner layout and intuitive mapping it enabled.
+
+Late in the project, the client requested an additional feature to highlight outliers in the visualization plots. We scoped the work, but due to time constraints, the client agreed to handle this post-delivery. Implementing automated outlier detection and annotation would require coordination with the modeling team to define consistent thresholds and flagging criteria, which wasn't feasible in the final project window.
+
+Overall, the dashboard is optimized for internal use by equipment maintenance engineers who prioritize fast interpretation over stylistic polish. It trades universal accessibility and aesthetic flexibility for space-efficiency and direct alignment with the client's internal practices. Future improvements could include adding accessibility options, support for exportable PDF summaries, and expanding visual interactivity—features that would increase usability but require further design iteration and time investment.
 
 ### AWS Data Pipeline
 
