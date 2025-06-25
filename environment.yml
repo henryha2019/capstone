@@ -27,3 +27,4 @@ dependencies:
     - tensorflow==2.19.0
     - gdown==4.7.1
     - pytest==8.4.1
+    - patool>=1.13
