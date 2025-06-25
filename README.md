@@ -17,75 +17,130 @@ conda env create -f environment.yml
 conda activate brilliant-auto-env
 ```
 
+Data can be obtained via one of the following methods:
+
+- **Google Drive**: [Download the dataset ZIP](https://drive.google.com/file/d/1dsNqNYfvnSS6W5rAwDHOULK0m53Artsp/view?usp=drive_link)
+- **S3 Bucket**: `s3://brilliant-automation/capstone/data/voltage/`
+
+After downloading, unzip into the project root:
+
+```bash
+unzip voltage_data.zip -d data/voltage/
+```
+
+#### Runs Pipeline Locally
+
+```bash
+make all
+```
+
+Runs the complete pipeline in sequence:
+
+1. **Preprocess data** (`make preprocess`)
+2. **Extract features** (`make features`)
+3. **Train models** (`make train`)
+4. **Run tests** (`make tests`)
+5. **Launch dashboard** (`make dashboard`)
+
+### **Project Structure**
+
+A quick overview of the repository layout:
+
+```
+├── dashboard/src/            # Dash app and tests
+├── data/                     # Data storage
+│   ├── raw/                  # Raw sensor and rating files
+│   ├── processed/            # Preprocessed CSV outputs
+│   ├── features/             # Extracted feature CSVs
+│   ├── voltage/              # Unzipped voltage data
+│   └── rar_files/            # Archived raw data
+├── docs/                     # Documentation and report sources
+│   ├── images/               # Diagrams and figures
+│   └── reports/              # Quarto QMD and generated PDFs
+├── model/                    # Modeling scripts and results
+│   ├── src/                  # Preprocessing, feature, and model code
+│   ├── tests/                # Unit tests for modeling pipeline
+│   └── archive/              # Legacy scripts
+│   └── utils/                # EDA helper module
+│   └── scripts/              # Pipeline scripts
+│   └── results/              # Model outputs
+├── notebooks/                # EDA notebooks for each device
+├── Makefile                  # Pipeline orchestration
+├── environment.yml           # Conda environment spec
+└── README.md                 # Project README
+```
 
 ---
 
 ## **2. Makefile Usage**
+
 > Use the provided `Makefile` to automate the modeling pipeline.
 
-### **Available Commands**
-| Command               | Description                                           |
-|-----------------------|-------------------------------------------------------|
-| `make all`            | Run the full pipeline: download → preprocess → train |
-| `make download`       | Only download raw data                                |
-| `make preprocess`     | Preprocess data for the specified device              |
-| `make features`       | Extract features for the specified device             |
-| `make train`          | Train models for the specified device                |
-| `make clean`          | Clean temporary files                                 |
-| `make tests`          | Run all test cases using `pytest`                    |
-| `make proposal-report`| Generate the proposal report                          |
-| `make final-report`   | Generate the final report  
+### Available Commands
+
+| Command                        | Description                                                                         |
+| ------------------------------ | ----------------------------------------------------------------------------------- |
+| `make all`                     | Run the full pipeline: download → preprocess → features → train → tests → dashboard |
+| `make preprocess`              | Preprocess data for the specified device                                            |
+| `make features`                | Extract features for the specified device                                           |
+| `make train`                   | Train and tune models for the specified device                                      |
+| `make tests`                   | Run all unit tests using `pytest`                                                   |
+| `make clean`                   | Remove temporary and generated files                                                |
+| `make dashboard`               | Preprocess missing devices and launch the dashboard server                          |
+| `make proposal-report`         | Generate the proposal report (PDF)                                                  |
+| `make technical-report`        | Generate the technical report (PDF)                                                 |
+| `make final-report`            | Generate the final report (PDF)                                                     |
+| `make reports`                 | Run all report targets: proposal, technical, and final                              |
+| `make notebooks`               | Execute and render EDA Jupyter notebooks for each device                            |
+| `make archive-feature-eng-rar` | Run archived feature extraction script                                              |
+| `make archive-model`           | Run archived model script                                                           |
+| `make archive-rnn`             | Run archived RNN model script                                                       |
+| `make archive`                 | Run all archived scripts                                                            |
 
 ---
 
-### **Using `DEVICE`**
-To process a different `DEVICE`, specify it on the command line:
+### Using `DEVICE`
+
+To target a specific device, set the `DEVICE` variable:
+
 ```bash
-DEVICE = 8#Belt Conveyer
+make preprocess DEVICE="Tube Mill"
 ```
+The script currently supports the following devices:
+
+1. `1#High-Temp Fan`
+2. `8#Belt Conveyer`
+3. `Tube Mill`
+
 ---
 
 ## **3. Pipeline Scripts**
-Each target in the Makefile maps directly to a Python or shell script.
+Each `make` target maps directly to a script or command.
 
-| Target         | Script                                   | Example                                                          |
-|----------------|-----------------------------------------|------------------------------------------------------------------|
-| `preprocess`   | `python model/src/preprocess.py`        | `python model/src/preprocess.py --device "8#Belt Conveyer"`      |
-| `features`     | `python model/src/feature_engineer.py`  | `python model/src/feature_engineer.py --device "Tube Mill"`      |
-| `train`        | `python model/src/model.py`             | `python model/src/model.py --model all --device "Tube Mill"`     |
+| Target             | Script/Command                                                           | Example                                  |
+| ------------------ | ------------------------------------------------------------------------ | ---------------------------------------- |
+| `preprocess`       | `python model/src/preprocess.py --device "$(DEVICE)"`                    | `make preprocess DEVICE="Tube Mill"`     |
+| `features`         | `python model/src/feature_engineer.py --device "$(DEVICE)"`              | `make features DEVICE="8#Belt Conveyer"` |
+| `train`            | `python model/src/model.py --model all --tune --device "$(DEVICE)"`      | `make train DEVICE="8#Belt Conveyer"`    |
+| `tests`            | `pytest -v model/tests/ dashboard/src/tests/`                            | `make tests`                             |
+| `clean`            | Remove caches, logs, and temporary files                                 | `make clean`                             |
+| `dashboard`        | Preprocess any missing devices, then `cd dashboard/src && python -m app` | `make dashboard`                         |
+| `proposal-report`  | `quarto render docs/reports/proposal.qmd --to pdf`                       | `make proposal-report`                   |
+| `technical-report` | `quarto render docs/reports/technical_report.qmd --to pdf`               | `make technical-report`                  |
+| `final-report`     | `quarto render docs/reports/final_report.qmd --to pdf`                   | `make final-report`                      |
+| `notebooks`        | `jupyter nbconvert --to notebook --execute notebooks/*.ipynb --inplace`  | `make notebooks`                         |
+| `archive-*`        | Run archived scripts under `model/archive/`                              | `make archive`                           |
 
 ---
 
 ## **4. How to Generate the Proposal Report**
 
-Follow these steps to generate the proposal report as a PDF:
-
-### 1. **Run the Preprocessing Script**
-
-Prepare the data required for the report by running the preprocessing script:
+Use the Makefile in three simple steps:
 
 ```bash
-    python model/src/preprocess.py --device "8#Belt Conveyer"
-```
-
-This command processes the data for the specified device and prepares it for subsequent analysis.
-
-### 2. **Run the EDA Notebook**
-
-Execute the exploratory data analysis notebook to automatically generate all required plots:
-
-```bash
-    jupyter nbconvert --to notebook --execute notebooks/eda_conveyer_belt.ipynb
-```
-
-This runs all the cells in the notebook and updates it with the generated outputs.
-
-### 3. **Generate the Proposal Report**
-
-Convert the Quarto document into a PDF report using the following command:
-
-```bash
-  quarto render docs/reports/proposal.qmd --to pdf
+make preprocess DEVICE="<device_name>"    # Prepare data for the chosen device
+make notebooks                              # Execute all EDA notebooks and generate plots
+make proposal-report                        # Render the proposal QMD into proposal.pdf
 ```
 
 The `proposal.pdf` file will be generated and saved in the `docs` directory.
@@ -97,20 +152,20 @@ The `proposal.pdf` file will be generated and saved in the `docs` directory.
 Convert the Quarto document into a PDF report using the following command:
 
 ```bash
-  quarto render docs/reports/final_report.qmd --to pdf
+make final-report
 ```
 
 The `final_report.pdf` file will be generated and saved in the `docs` directory.
 
 ---
 
-## **6. How to Run the Preprocessing Script**
+## **6.1. How to Run the Preprocessing Script**
 
 The preprocessing script processes raw sensor and ratings data and outputs a merged dataset for further analysis.
 
-###  **Supported Devices**
+### **Supported Devices**
 
-The script currently supports the following devices:
+The script currently supports:
 
 1. `1#High-Temp Fan`
 2. `8#Belt Conveyer`
@@ -118,37 +173,133 @@ The script currently supports the following devices:
 
 ### **Usage**
 
-Run the script from the root directory:
+From the project root, run:
 
-``` bash
+```bash
 python model/src/preprocess.py --device "<device_name>" [--data_dir <data_directory>] [--output_dir <output_directory>]
 ```
 
 #### **Arguments**
 
-- `--device` (Required): Specify one of the supported device names (e.g. `8#Belt Conveyer`).
-- `--data_dir` (Optional): Directory containing raw `.xlsx` files. Defaults to `Data/raw`.
-- `--output_dir` (Optional): Directory to save the processed CSV file. Defaults to `Data/process`.
+- `--device` (Required): One of the supported device names.
+- `--data_dir` (Optional): Directory containing raw `.xlsx` files (default: `data/raw`).
+- `--output_dir` (Optional): Directory for the processed CSV (default: `data/processed`).
 
 ### **Examples**
 
-1. To process data for `8#Belt Conveyer` using default directories:
+1. Default directories for `8#Belt Conveyer`:
 
    ```bash
    python model/src/preprocess.py --device "8#Belt Conveyer"
    ```
 
-   Output:
+   Outputs:
 
    ```bash
    data/processed/8#Belt Conveyer_merged.csv
    model/src/preprocessing.log
    ```
 
-2. To process data for `Tube Mill` using custom directories:
+2. Custom output directory for `Tube Mill`:
 
    ```bash
    python model/src/preprocess.py --device "Tube Mill" --output_dir custom_data/processed
+   ```
+
+---
+
+## **6.2. How to Run Feature Extraction**
+
+The feature extraction script computes DSP metrics and aggregates them with ratings to prepare the analysis-ready dataset.
+
+### **Supported Devices**
+
+The script accepts the same devices as preprocessing:
+
+1. `1#High-Temp Fan`
+2. `8#Belt Conveyer`
+3. `Tube Mill`
+
+### **Usage**
+
+From the project root, run:
+
+```bash
+python model/src/feature_engineer.py --device "<device_name>" [--input_dir <processed_data_directory>] [--output_file <output_csv_path>]
+```
+
+#### **Arguments**
+
+- `--device` (Required): Device name matching the processed data file.
+- `--input_dir` (Optional): Directory containing preprocessed CSVs (default: `data/processed`).
+- `--output_file` (Optional): Path for the feature CSV output (default: `data/features/<device>_features.csv`).
+
+### **Examples**
+
+1. Default input/output for `8#Belt Conveyer`:
+
+   ```bash
+   python model/src/feature_engineer.py --device "8#Belt Conveyer"
+   ```
+
+   Outputs:
+
+   ```bash
+   data/features/8#Belt Conveyer_features.csv
+   model/src/feature_engineer.log
+   ```
+
+2. Custom input directory for `8#Belt Conveyer`:
+
+   ```bash
+   python model/src/feature_engineer.py --device "8#Belt Conveyer" --input_dir custom_data/processed --output_file custom_data/features/tube_mill.csv
+   ```
+
+---
+
+## **6.3. How to Run Model Training**
+
+The model training script fits and tunes selected algorithms on the feature dataset.
+
+### **Supported Devices & Models**
+
+- **Devices**: Same three devices as above.
+- **Models**: Specify `--model all` or a comma-separated list of keys (e.g., `ridge,rf,xgb,rnn`).
+
+### **Usage**
+
+From the project root, run:
+
+```bash
+python model/src/model.py --device "<device_name>" --model <model_list> [--tune] [--output_dir <model_dir>]
+```
+
+#### **Arguments**
+
+- `--device` (Required): Device name whose feature CSV is used.
+- `--model` (Required): Comma-separated models or `all`.
+- `--tune` (Optional): Enable hyperparameter tuning via cross-validation.
+- `--output_dir` (Optional): Directory to save trained models and metrics (default: `models/`).
+
+### **Examples**
+
+1. Train all models with tuning for `8#Belt Conveyer`:
+
+   ```bash
+   python model/src/model.py --device "8#Belt Conveyer" --model all --tune
+   ```
+
+   Outputs:
+
+   ```bash
+   results/models/8#Belt Conveyer/                            # trained model files
+   results/metrics/8#Belt Conveyer/metrics_summary.csv        # performance metrics
+   ```
+
+2. Train only Ridge and Random Forest without tuning:
+
+   ```bash
+   python model/src/model.py --device "8#Belt Conveyer" --model ridge,rf
    ```
 
 ---
@@ -157,78 +308,8 @@ python model/src/preprocess.py --device "<device_name>" [--data_dir <data_direct
 
 The project includes comprehensive unit tests for the data processing pipeline. Tests are located in the `model/tests/` directory and `dashboard/src/tests/` and cover preprocessing, feature engineering, model functionality, and key dashboard scripts.
 
-### **Running Model Tests**
-
-From the root directory of the project:
-
 ```bash
-# Navigate to the model directory
-cd model
-
-# Run preprocessing tests
-python -m pytest tests/test_preprocess.py -v
-
-# Run feature engineering tests  
-python -m pytest tests/test_feature_engineer.py -v
-
-# Run all tests at once
-python -m pytest tests/ -v
-
-# Run tests with coverage report
-python -m pytest tests/ --cov=src --cov-report=html
-
-# Run specific test function
-python -m pytest tests/test_preprocess.py::test_log_dataframe_metadata -v
-```
-
-### **Running Dashboard Tests**
-
-From the root directory of the project:
-
-```bash
-# Navigate to the model directory
-cd dashboard/src
-
-# Run all tests
-pytest tests/
-```
-
-### **Test Coverage**
-
-The test suite covers:
-
-#### **Preprocessing Tests (`test_preprocess.py`)**
-- **`test_log_dataframe_metadata`** - Tests logging functionality for dataframe metadata
-- **`test_filter_datetime_range`** - Tests datetime filtering functionality
-
-#### **Feature Engineering Tests (`test_feature_engineer.py`)**
-- **DSP Processing Tests**
-  - `test_read_json_file_*` - JSON file reading and validation
-  - `test_band_rms` - RMS calculation in frequency bands
-  - `test_band_peak` - Peak calculation in frequency bands
-- **File Handling Tests**
-  - `test_collect_json_files_local_mode` - JSON file collection from local directories
-  - `test_read_merged_csv_local_mode` - CSV reading functionality
-  - `test_save_csv_local_mode` - CSV saving functionality
-- **Bucket Processing Tests**
-  - `test_bucket_summary` - Time-based data bucketing and summarization
-- **Parametrized Tests**
-  - Multiple sampling rates and frequency bands
-  - Different bucket intervals
-- **Error Handling Tests**
-  - Invalid file paths, malformed JSON, invalid parameters
-
-### **Test Requirements**
-
-Ensure you have the testing dependencies installed:
-
-```bash
-# Install testing dependencies (if not already installed)
-conda activate brilliant-auto-env
-pip install pytest pytest-cov
-
-# Or install from requirements if available
-pip install -r requirements-test.txt  # if exists
+make tests
 ```
 
 ---
@@ -236,8 +317,7 @@ pip install -r requirements-test.txt  # if exists
 ## **8. How to Run the Dashboard**
 
 ```bash
-cd dashboard/src
-python -m app
+make dashboard
 ```
 
 Go to `http://127.0.0.1:8050/dashboard/` to view the dashboard.
