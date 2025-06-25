@@ -23,34 +23,18 @@ logging.info(f"Log file location: {LOG_FILE}")
 
 def log_dataframe_metadata(df, df_name):
     """
-    This function provides a summary of key attributes of the DataFrame for debugging
-    and monitoring purposes. It includes the shape of the DataFrame, its columns,
-    the count of null values per column, memory usage, and a preview of the first few rows.
+    Logs metadata for a DataFrame, including shape, columns, null counts, memory usage, and preview.
 
     Args:
-        df (pd.DataFrame): The DataFrame to analyze and log metadata for.
-        df_name (str): A descriptive name for the DataFrame to include in the logs (e.g., "Sensor DataFrame").
+        df: DataFrame to analyze and log.
+        df_name: Descriptive name for the DataFrame (e.g., "Sensor DataFrame").
 
-    Example Log:
-        ============================================================================
-        DATAFRAME SUMMARY: Train Dataset
-        ============================================================================
-        Shape: (10000, 12)
-        Columns: col1, col2, col3, col4, ...
-        ----------------------------------------------------------------------------
-        Null values:
-          col1                      : 0
-          col2                      : 123
-          col3                      : 0
-          col4                      : 45
-        ----------------------------------------------------------------------------
-        Memory Usage: 1.56 MB
-        ----------------------------------------------------------------------------
-        Preview Dataframe Head:
-          col1  col2  col3
-          1      2     3
-          4      5     6
-
+    Logs:
+        - Shape: number of rows and columns.
+        - Columns: list of column names.
+        - Null values: count per column.
+        - Memory usage in MB.
+        - First five rows preview.
     """
     separator = "=" * 80
     inner_separator = "-" * 80
@@ -81,8 +65,19 @@ def log_dataframe_metadata(df, df_name):
 
 def read_device_files(device_name, data_dir="../data/raw", aws_mode=False, s3_bucket='brilliant-automation-capstone'):
     """
-    Reads all Excel files for a given device name, ignoring any prefix like date ranges.
-    If aws_mode is True, reads files from S3 bucket brilliant-automation-capstone/raw instead of local directory.
+    Reads Excel data for a device either locally or from S3, splitting feature and rating files.
+
+    Args:
+        device_name: Name of the device (e.g., "8#Belt Conveyer").
+        data_dir: Local directory for raw .xlsx files.
+        aws_mode: If True, read from S3 bucket instead of local.
+        s3_bucket: S3 bucket name for raw data.
+
+    Returns:
+        Tuple of (features_df, rating_df) as concatenated DataFrames.
+
+    Raises:
+        FileNotFoundError: If no matching files are found.
     """
     logging.info(f"Reading files for device: {device_name} (AWS mode: {aws_mode})")
 
@@ -185,17 +180,15 @@ def read_device_files(device_name, data_dir="../data/raw", aws_mode=False, s3_bu
 
 def filter_datetime_range(df, start, end):
     """
-    Filters a DataFrame to include rows where the values in the 'datetime' column
-    fall within a given date range (inclusive).
+    Filters rows of a DataFrame based on 'datetime' column falling within [start, end].
 
     Args:
-        df (pd.DataFrame): The DataFrame to filter.
-        start (datetime or str): The start of the date range (inclusive). Can be a datetime object or a valid date string.
-        end (datetime or str): The end of the date range (inclusive). Can be a datetime object or a valid date string.
+        df: DataFrame with a 'datetime' column.
+        start: Start of date range (inclusive).
+        end: End of date range (inclusive).
 
     Returns:
-        pd.DataFrame: A filtered DataFrame containing rows where the values in the 'datetime' column
-        are within the given date range.
+        Filtered DataFrame.
     """
     logging.info(f"Filtering DataFrame by date range: {start} to {end} on the 'datetime' column")
     result_df = df[(df['datetime'] >= start) & (df['datetime'] <= end)]

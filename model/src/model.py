@@ -1,5 +1,8 @@
-#!/usr/bin/env python3
-
+"""
+Feature engineering module: computes DSP metrics from waveform JSON files,
+aggregates measurement and rating data into time buckets, and merges all
+features into a final dataset for training and evaluation.
+"""
 import argparse
 from pathlib import Path
 import os
@@ -27,8 +30,15 @@ from joblib import parallel_backend
 
 def evaluate_cv(cv_results):
     """
-    Summarizes cross-validation results into a DataFrame.
-    Converts negative metrics to their positive equivalents.
+    Summarize cross-validation results.
+
+    Converts negative error metrics into positive and computes means.
+
+    Args:
+        cv_results: Output dict from sklearn.model_selection.cross_validate.
+
+    Returns:
+        DataFrame with one row of averaged metrics: MSE, RMSE, MAE, R2, Explained Variance.
     """
     metrics = {
         'MSE': -cv_results['test_neg_mean_squared_error'],
@@ -43,8 +53,13 @@ def evaluate_cv(cv_results):
 
 def save_results(base_dir, device, best_models, aws_mode=False):
     """
-    Saves the best models, cross-validation metrics, and prediction plots for each target feature.
-    Stores results in 'model/results' locally or S3 bucket when aws_mode=True.
+    Persist best models, metrics, and prediction plots locally or to S3.
+
+    Args:
+        base_dir: Root directory for saving results locally.
+        device: Device identifier for folder organization.
+        best_models: Mapping target->(metrics_df, model_pipeline, (y_true, y_pred)).
+        aws_mode: If True, upload outputs to S3 bucket 'brilliant-automation-capstone'.
     """
     s3_bucket = 'brilliant-automation-capstone'
     
@@ -124,6 +139,17 @@ def save_results(base_dir, device, best_models, aws_mode=False):
 
 
 def main():
+    """
+    Train and evaluate a suite of regression models on processed features.
+
+    Steps:
+      1. Parse arguments for model selection, tuning, device, and aws flag.
+      2. Load feature dataset from local or S3.
+      3. Preprocess features and targets.
+      4. Optionally perform hyperparameter search.
+      5. Evaluate via time-series cross-validation.
+      6. Save the best models and metrics.
+    """
     parser = argparse.ArgumentParser(description="Train & evaluate ML models on device data.")
     parser.add_argument(
         "--model",

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # feature_eng.py
 #
 # This script will:
@@ -85,7 +84,20 @@ FILENAME_PATTERN = re.compile(
 
 # —————————— 2. HELPERS: JSON reader & DSP metrics ——————————
 def read_json_file(path: Path = None, content: str = None) -> (float, np.ndarray):
-    """Read JSON file from path or content string"""
+    """
+    Parse waveform data from a JSON file or content string.
+
+    Args:
+        path: Path to local JSON file. If provided, 'content' is ignored.
+        content: JSON string. Used when reading from S3.
+
+    Returns:
+        fs: Sampling frequency (1 / time delta).
+        axis_y: 1D numpy array of waveform values.
+
+    Raises:
+        ValueError: If axisX has fewer than 2 points or non-positive dt.
+    """
     if content:
         data = json.loads(content)
     else:
@@ -102,6 +114,18 @@ def read_json_file(path: Path = None, content: str = None) -> (float, np.ndarray
 
 
 def band_rms(sig: np.ndarray, fs: float, f_lo: float, f_hi: float) -> float:
+    """
+    Compute RMS of signal energy within a frequency band.
+
+    Args:
+        sig: Time-domain signal array.
+        fs: Sampling frequency.
+        f_lo: Lower bound of frequency band (Hz).
+        f_hi: Upper bound of frequency band (Hz).
+
+    Returns:
+        RMS value over [f_lo, f_hi], or nan if no bins.
+    """
     n     = sig.size
     freqs = np.fft.rfftfreq(n, d=1.0/fs)
     X     = np.fft.rfft(sig - sig.mean())
@@ -111,6 +135,18 @@ def band_rms(sig: np.ndarray, fs: float, f_lo: float, f_hi: float) -> float:
 
 
 def band_peak(sig: np.ndarray, fs: float, f_lo: float, f_hi: float) -> float:
+    """
+    Compute maximum time-domain amplitude after band-pass filtering.
+
+    Args:
+        sig: Time-domain signal.
+        fs: Sampling frequency.
+        f_lo: Lower frequency bound.
+        f_hi: Upper frequency bound.
+
+    Returns:
+        Peak amplitude within band.
+    """
     n     = sig.size
     X     = np.fft.rfft(sig - sig.mean())
     freqs = np.fft.rfftfreq(n, d=1.0/fs)
@@ -127,6 +163,20 @@ def bucket_summary(
     location_col: str = 'location',
     bucket_minutes: int = 20
 ) -> pd.DataFrame:
+    """
+    Aggregate measurements into time-based buckets where ratings remain constant.
+
+    Args:
+        df: DataFrame with measurements and ratings.
+        measurement_cols: List of measurement column names.
+        rating_cols: List of rating column names.
+        time_col: Name of datetime column.
+        location_col: Name of location column.
+        bucket_minutes: Duration of each bucket (minutes).
+
+    Returns:
+        DataFrame with one row per bucket, containing aggregated statistics and first ratings.
+    """
     df = df.copy()
     df[time_col] = pd.to_datetime(df[time_col])
     df = df.sort_values([location_col, time_col]).reset_index(drop=True)
@@ -178,7 +228,16 @@ def bucket_summary(
 
 # —————————— 4. AWS/LOCAL FILE HANDLING ——————————
 def collect_json_files(aws_mode=False, device_name="8#Belt Conveyer"):
-    """Collect JSON files from local directory or S3 bucket"""
+    """
+    List all waveform JSON files locally or in S3 for a device.
+
+    Args:
+        aws_mode: Read from S3 if True, else local.
+        device_name: Device substring to filter files.
+
+    Returns:
+        List of records with 'timestamp', 'filepath', and placeholders for metrics.
+    """
     records = []
     s3_bucket = 'brilliant-automation-capstone'
     
@@ -233,7 +292,16 @@ def collect_json_files(aws_mode=False, device_name="8#Belt Conveyer"):
     return records
 
 def read_merged_csv(device_name, aws_mode=False):
-    """Read merged CSV from local directory or S3 bucket"""
+    """
+    Load merged sensor+rating CSV locally or from S3.
+
+    Args:
+        device_name: Device identifier.
+        aws_mode: If True, read from S3.
+
+    Returns:
+        DataFrame with Date, Time, measurements, and ratings.
+    """
     s3_bucket = 'brilliant-automation-capstone'
     
     if aws_mode:
@@ -247,7 +315,15 @@ def read_merged_csv(device_name, aws_mode=False):
         return pd.read_csv(merged_path, parse_dates=["datetime"])
 
 def save_csv(df, filename, aws_mode=False, s3_prefix=''):
-    """Save CSV to local directory or S3 bucket"""
+    """
+    Save DataFrame as CSV locally or to an S3 bucket.
+
+    Args:
+        df: DataFrame to save.
+        filename: Output filename.
+        aws_mode: If True, upload to S3.
+        s3_prefix: Prefix in S3 bucket (folder).
+    """
     s3_bucket = 'brilliant-automation-capstone'
     
     if aws_mode:
@@ -267,6 +343,18 @@ def save_csv(df, filename, aws_mode=False, s3_prefix=''):
 
 # —————————— 5. MAIN PROCESSING FUNCTION ——————————
 def main(device_name="8#Belt Conveyer", aws_mode=False):
+    """
+    Full feature engineering pipeline:
+      1. Collect waveform JSONs and compute DSP metrics.
+      2. Load merged CSV and rename rating columns.
+      3. Bucket summary of time-windowed measurements.
+      4. Merge DSP metrics with bucket summary via interval lookup.
+      5. Save final features table.
+
+    Args:
+        device_name: Name of device to process.
+        aws_mode: Use S3 I/O if True.
+    """
     s3_bucket = 'brilliant-automation-capstone'
     
     # —————————— JSON METRICS COLLECTION ——————————
