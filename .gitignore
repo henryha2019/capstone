@@ -21,8 +21,7 @@ docs/.RData
 .idea/
 
 # Dataset directory exclusions
-# Exclude raw data files but keep essential metadata or configuration files
-data/raw/
+# Exclude large data files but keep essential metadata or configuration files
 data/voltage/
 data/raw_voltage/
 data/processed/*.csv         # Exclude processed datasets (if reproducible)
@@ -30,7 +29,9 @@ data/processed/*.xlsx        # Exclude intermediate Excel files
 
 Data/processed/*.csv
 
-Data/
+!data/rar_files/
+!data/rar_files/**
+
 # Dashboard assets
 dashboard/src/assets/*.css.map
 
