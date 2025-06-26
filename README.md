@@ -320,7 +320,9 @@ make tests
 make dashboard
 ```
 
-Go to `http://127.0.0.1:8050/dashboard/` to view the dashboard.
+Go to [http://127.0.0.1:8050/dashboard/](http://127.0.0.1:8050/dashboard/) to view the dashboard.
+
+<img src="data/Dashboard.gif" alt="Dashboard" width="70%" />
 
 ---
 
